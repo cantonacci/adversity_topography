@@ -13,7 +13,6 @@ Computed at BASELINE (the reported expansion timepoint). Outputs:
   TAB_DIR/supp_design_nesting.csv     (one row per fact, value + interpretation)
   DAT_DIR/supp_design_nesting.txt     (human-readable)
 """
-import sys
 import warnings
 from pathlib import Path
 
@@ -22,9 +21,9 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import TAB_DIR, DAT_DIR
+from adtopo.config import TAB_DIR, DAT_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('design_nesting_structure')
 
 SITE = 'study_site'
 FAMILY = 'family_id'
@@ -33,7 +32,7 @@ SERIAL = 'scanner_serial_number_baseline'
 
 log_lines = []
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
     log_lines.append(str(msg))
 
 facts = []

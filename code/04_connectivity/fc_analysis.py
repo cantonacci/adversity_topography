@@ -19,7 +19,7 @@ Usage:
   python fc_analysis.py [--skip-merge]
 """
 
-import sys, warnings, argparse
+import warnings, argparse
 from pathlib import Path
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -28,9 +28,10 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.multitest import multipletests
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, TAB_DIR, NETWORKS
-from lib.re_models import fit_ols_cluster_table
+from adtopo.config import DAT_DIR, TAB_DIR, NETWORKS
+from adtopo.re_models import fit_ols_cluster_table
+from adtopo.logging_utils import get_logger
+_log = get_logger('fc_analysis')
 
 CHUNK_DIR = DAT_DIR / 'fc_chunks'
 FC_PATH   = DAT_DIR / 'fc_ses-00A.csv'
@@ -48,7 +49,7 @@ COVARIATES = ['interview_age', 'sex_num', 'mean_FD', 'n_usable_frames']
 PRED       = 'threat_composite'
 
 
-def log(msg): print(msg, flush=True)
+def log(msg): _log.info(str(msg))
 
 
 # ── Step 1: merge chunks ───────────────────────────────────────────────────────

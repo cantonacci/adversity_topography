@@ -20,7 +20,6 @@ This is the change-based test that parallels Result 2/3 for cognition:
 CBCL subscales (raw _r scores) are pulled from the four wave dataframes
 (df_base/df_y2/df_y4/df_y6) and merged onto scan_topo_long by (subject, wave).
 """
-import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -28,8 +27,7 @@ from scipy import stats
 from statsmodels.regression.mixed_linear_model import MixedLM
 from statsmodels.stats.multitest import multipletests
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, CBCL_MEDIATION_OUTCOMES
+from adtopo.config import DAT_DIR, CBCL_MEDIATION_OUTCOMES
 
 DERIVED = Path(__file__).parent / 'derived'
 

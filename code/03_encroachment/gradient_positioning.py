@@ -29,12 +29,15 @@ from neuromaps.datasets import fetch_annotation
 from neuromaps.nulls import alexander_bloch
 from neuromaps.stats import compare_images
 
+from adtopo.logging_utils import get_logger
+_log = get_logger('gradient_positioning')
+
 DIFF  = ROOT / 'outputs/cifti_for_workbench/SCAN_density_threat_baseline_diff.dscalar.nii'
 DLAB  = ROOT / 'data/atlas_files/abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 OUT   = ROOT / 'outputs/tables/D_gradient_positioning_summary.txt'
 NVERT = 32492  # per hemi, fsLR 32k
 L = []
-def log(s=''): print(s); L.append(s)
+def log(s=''): _log.info(str(s)); L.append(s)
 
 
 def cifti_to_full(img, nvert=NVERT):

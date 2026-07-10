@@ -17,7 +17,6 @@ Outputs:
   TAB_DIR/supp_bayes_factors_individual.csv   (each factor x each network)
   DAT_DIR/supp_bayes_factors_individual.txt
 """
-import sys
 import warnings
 from pathlib import Path
 
@@ -27,17 +26,17 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import TAB_DIR, DAT_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
-from lib.bayes_factors import _bic, bf10_from_bic, label_bf
+from adtopo.config import TAB_DIR, DAT_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
+from adtopo.bayes_factors import _bic, bf10_from_bic, label_bf
+from adtopo.logging_utils import get_logger
+_log = get_logger('bayes_factors_individual')
 
 COVARS = ['interview_age', 'sex_num', 'fd']
 SITE = 'study_site'
 
 log_lines = []
 def log(m=''):
-    print(m, flush=True); log_lines.append(str(m))
+    _log.info(str(m)); log_lines.append(str(m))
 
 
 df = pd.read_csv(DAT_DIR / 'df_base.csv')

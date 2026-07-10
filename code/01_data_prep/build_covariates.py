@@ -12,12 +12,12 @@ New columns added (year-4 and year-6 only; baseline/yr-2 already in original fil
   rest_mean_FD_4yrFU, study_site_4yrFU, interview_age_4yrFU  (age in years)
   rest_mean_FD_6yrFU, study_site_6yrFU, interview_age_6yrFU
 """
-import sys
 import pandas as pd
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DATA_DIR, AB_COVARIATES_DIR
+from adtopo.config import DATA_DIR, AB_COVARIATES_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('build_covariates')
 
 SRC_DIR    = AB_COVARIATES_DIR
 COV_IN     = DATA_DIR / 'covariates' / '5_covariates.xlsx'
@@ -29,7 +29,7 @@ SESSION_MAP = {
 }
 
 def log(msg=''):
-    print(msg)
+    _log.info(str(msg))
 
 log('Loading source files...')
 mot = pd.read_csv(SRC_DIR / 'mr_y_qc__mot.tsv', sep='\t', na_values=['n/a'],

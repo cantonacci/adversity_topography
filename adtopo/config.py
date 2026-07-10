@@ -283,3 +283,33 @@ NIH_MEDIATION_LABELS = {
 # FDR test counts
 N_TESTS_PC     = len(PC_COLS) * len(NETWORKS)                                    # 45
 N_TESTS_BEHAV  = len(NETWORKS) * (len(CBCL_OUTCOMES) + len(NIH_MEDIATION_COLS))  # 150
+
+
+# ── Required input files ──────────────────────────────────────────────────────
+# Raw inputs the data-prep stage reads. External derivative directories
+# (REPRO_DIR/XCP_DIR/FC_DTSERIES_DIR) are only needed for the HEAVY stages and
+# are checked by those scripts themselves.
+REQUIRED_INPUT_FILES = {
+    'ELA_FILE':         ELA_FILE,
+    'COV_FILE':         COV_FILE,
+    'CBCL_FILE':        CBCL_FILE,
+    'NIH_TOOLBOX_FILE': NIH_TOOLBOX_FILE,
+    'AB_G_DYN_FILE':    AB_G_DYN_FILE,
+    **{f'TOPO_FILES[{k}]': v for k, v in TOPO_FILES.items()},
+}
+
+
+def check_required_inputs(files=None, strict=True):
+    """Verify that required input files exist; return the list of missing ones.
+
+    Call this at the start of a data-prep entry point to fail fast with a clear
+    message instead of a deep pandas/read error. With ``strict=True`` a missing
+    file raises FileNotFoundError; otherwise the missing list is just returned.
+    """
+    files = REQUIRED_INPUT_FILES if files is None else files
+    missing = [f'{name}: {path}' for name, path in files.items() if not Path(path).exists()]
+    if missing and strict:
+        raise FileNotFoundError(
+            'Missing required input file(s):\n  ' + '\n  '.join(missing) +
+            '\n(Set external paths in config.local.sh — see config.local.example.sh.)')
+    return missing

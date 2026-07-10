@@ -12,7 +12,6 @@ small helpers. Import this, not figstyle, from panel scripts.
     fig, ax = F.fs.figure("single", 50)
 """
 from __future__ import annotations
-import sys
 from pathlib import Path
 
 import matplotlib
@@ -20,12 +19,9 @@ matplotlib.use("Agg")
 
 # ── locate the house style (co-located here) and the analysis config ─────────
 ROOT       = Path(__file__).resolve().parents[2]
-CODE_DIR   = ROOT / "code"
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # this folder: figstyle.py
-sys.path.insert(0, str(CODE_DIR))                          # code/: config.py
 
 import figstyle as fs   # noqa: E402  (the house style toolkit)
-from config import (    # noqa: E402
+from adtopo.config import (    # noqa: E402
     NETWORKS, NET_GROUPS, NET_GROUP_MAP,
     COMPOSITE_COLS, COMPOSITE_LABELS,
     ELA_COLS, ELA_LABELS_SHORT,

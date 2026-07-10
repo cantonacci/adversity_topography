@@ -33,7 +33,6 @@ Outputs:
   TAB_DIR/phase6_mediation_SCAN.csv         — SCAN mediator, all predictors & outcomes
   TAB_DIR/phase6_mediation_allnetworks.csv  — all 15 networks
 """
-import sys
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -55,8 +54,7 @@ def round_or_nan(x, ndigits):
     return np.nan if x is None or np.isnan(x) else round(float(x), ndigits)
 
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import (
+from adtopo.config import (
     FIG_DIR, TAB_DIR, DAT_DIR,
     NETWORKS,
     COMPOSITE_COLS, COMPOSITE_LABELS_SHORT,
@@ -65,7 +63,9 @@ from config import (
     NIH_MEDIATION_COLS, NIH_MEDIATION_LABELS,
     RANDOM_SEED,
 )
-from lib.re_models import fit_ols_cluster_table
+from adtopo.re_models import fit_ols_cluster_table
+from adtopo.logging_utils import get_logger
+_log = get_logger('mediation')
 
 np.random.seed(RANDOM_SEED)
 N_BOOTSTRAP = 5000
@@ -90,7 +90,7 @@ plt.rcParams.update({
 
 log_lines = []
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
     log_lines.append(str(msg))
 
 

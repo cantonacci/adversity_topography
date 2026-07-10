@@ -5,7 +5,6 @@ ELA and Functional Network Topography in ABCD — all four timepoints.
 Age is stored in years in all output DataFrames (ELA interview_age is divided
 by 12; yr-4/6 ages from the extended covariates file are already in years).
 """
-import sys
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -14,11 +13,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import (
+from adtopo.config import (
     FIG_DIR, TAB_DIR, DAT_DIR, TOPO_FILES, ELA_FILE, COV_FILE, TIMEPOINT_COV,
     NETWORKS, ELA_COLS, ELA_LABELS, NET_GROUP_COLOR, NET_GROUPS, RANDOM_SEED
 )
+from adtopo.logging_utils import get_logger
+_log = get_logger('build_analysis_dataframes')
 
 np.random.seed(RANDOM_SEED)
 for d in [FIG_DIR, TAB_DIR, DAT_DIR]:
@@ -26,7 +26,7 @@ for d in [FIG_DIR, TAB_DIR, DAT_DIR]:
 
 log_lines = []
 def log(msg=''):
-    print(msg)
+    _log.info(str(msg))
     log_lines.append(str(msg))
 
 # ── Step 1.1 — Load topography data ──────────────────────────────────────────

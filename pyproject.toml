@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adtopo"
+version = "0.1.0"
+description = "Shared library for the ELA x SCAN functional-network topography analyses (ABCD)."
+readme = "README.md"
+requires-python = ">=3.10"
+# Runtime dependencies are pinned in requirements.txt and provided by the
+# project venv; they are intentionally not duplicated here so an editable
+# install only links the `adtopo` package without re-resolving the environment.
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+# Only the shared library is a package. The numbered analysis scripts under
+# code/ are run-by-path entry points, not importable modules, so they are not
+# packaged (and their directories are not valid package names).
+[tool.setuptools]
+packages = ["adtopo"]
+
+[tool.pytest.ini_options]
+testpaths = ["code/tests"]

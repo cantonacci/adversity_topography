@@ -14,14 +14,11 @@ Outputs:
   TAB_DIR/supp_all10factors_beta_matrix_baseline.csv   (10 factors × 15 networks, β; * = q<.05)
   TAB_DIR/supp_all10factors_SCAN_baseline.csv          (SCAN column, full stats)
 """
-import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import TAB_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
+from adtopo.config import TAB_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
 
 src = TAB_DIR / 'phase3_individual_results_baseline.csv'
 res = pd.read_csv(src)

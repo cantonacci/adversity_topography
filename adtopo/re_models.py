@@ -256,10 +256,15 @@ CANONICAL_SPEC = 'ols_cluster'
 
 
 def fit_ols_cluster_table(df, outcome, predictors, covariates,
-                          site_col='study_site', family_col='family_id'):
+                          site_col='study_site', family_col='family_id',
+                          method=CANONICAL_SPEC):
     """Fit the canonical reported model once and return every predictor's estimate.
 
         outcome ~ predictors + covariates + C(site)      [OLS, family cluster-robust SE]
+
+    ``method`` is the label recorded in the returned meta (default the canonical
+    'ols_cluster'); passing it explicitly, rather than reading a module global,
+    keeps the reported specification name local to the call.
 
     Returns (table, meta) where ``table`` is a DataFrame with columns
     [predictor, beta, se, z, p, partial_r] (one row per entry in ``predictors``)
@@ -273,7 +278,7 @@ def fit_ols_cluster_table(df, outcome, predictors, covariates,
     tmp[site_col] = tmp[site_col].astype(str)
     n = len(tmp)
     meta = {'n': n, 'n_families': int(tmp[family_col].nunique()) if n else 0,
-            'n_params': 0, 'converged': False, 'method': CANONICAL_SPEC}
+            'n_params': 0, 'converged': False, 'method': method}
     if n < 50:
         return pd.DataFrame(columns=['predictor', 'beta', 'se', 'z', 'p', 'partial_r']), meta
 
@@ -293,3 +298,57 @@ def fit_ols_cluster_table(df, outcome, predictors, covariates,
                      'se': float(res.bse[p_]), 'z': z, 'p': float(res.pvalues[p_]),
                      'partial_r': _partial_r(z, n, k)})
     return pd.DataFrame(rows), meta
+
+
+class ModelFitter:
+    """Object-oriented entry point for the specification fits in this module.
+
+    Bundles the data and column roles once so a spec (or every spec) can be fit
+    without re-passing them. It delegates to the module-level ``fit_spec`` /
+    ``fit_all_specs`` / ``fit_ols_cluster_table`` functions, so exactly one
+    (unit-tested) implementation is shared and results are identical whichever
+    entry point is used.
+
+    Example
+    -------
+    >>> mf = ModelFitter(df, 'prop_SCAN', 'threat_composite',
+    ...                  ['threat_composite', 'deprivation_composite',
+    ...                   'unpredictability_composite'],
+    ...                  ['interview_age', 'sex_num', 'fd'])
+    >>> tidy       = mf.fit_all()            # every spec (invariance supplement)
+    >>> row        = mf.fit('ols_cluster')   # a single spec
+    >>> tbl, meta  = mf.canonical_table()    # reported OLS + cluster-robust table
+    """
+
+    def __init__(self, df, outcome, target, predictors, covariates,
+                 site_col='study_site', family_col='family_id',
+                 scanner_col='scanner_serial_number_baseline', maxiter=500):
+        self.df = df
+        self.outcome = outcome
+        self.target = target
+        self.predictors = list(predictors)
+        self.covariates = list(covariates)
+        self.site_col = site_col
+        self.family_col = family_col
+        self.scanner_col = scanner_col
+        self.maxiter = maxiter
+
+    def _spec_kwargs(self):
+        return dict(site_col=self.site_col, family_col=self.family_col,
+                    scanner_col=self.scanner_col, maxiter=self.maxiter)
+
+    def fit(self, spec):
+        """Fit a single specification; returns the fixed-schema record dict."""
+        return fit_spec(self.df, self.outcome, self.target, self.predictors,
+                        self.covariates, spec, **self._spec_kwargs())
+
+    def fit_all(self):
+        """Fit every spec in SPECS; returns a tidy one-row-per-spec DataFrame."""
+        return fit_all_specs(self.df, self.outcome, self.target, self.predictors,
+                             self.covariates, **self._spec_kwargs())
+
+    def canonical_table(self, method=CANONICAL_SPEC):
+        """Reported OLS + family-cluster-robust table for all predictors."""
+        return fit_ols_cluster_table(self.df, self.outcome, self.predictors,
+                                     self.covariates, site_col=self.site_col,
+                                     family_col=self.family_col, method=method)

@@ -2,7 +2,6 @@
 Formatting modeled on the author's example journal supplements. Reads verified
 tables from outputs/tables/. Does NOT overwrite the user's Supplement.docx.
 """
-import sys
 import re as _re   # aliased: Table S1 below uses a DataFrame named `re`
 from pathlib import Path
 import pandas as pd
@@ -12,9 +11,7 @@ from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import BASE_DIR as ROOT, CBCL_MEDIATION_OUTCOMES
+from adtopo.config import BASE_DIR as ROOT, CBCL_MEDIATION_OUTCOMES
 TAB = ROOT / 'outputs' / 'tables'
 WP  = ROOT / 'code/05_behavior/within_person/derived/results_within_person_cbcl.txt'
 OUT = ROOT / 'manuscript' / 'Supplement_full_draft.docx'

@@ -16,13 +16,11 @@ safe to re-run after any phase1 pipeline re-run. The transform is exposed as
 pure functions so its accuracy and idempotency are unit-tested in
 code/tests/test_fix_y2_age.py.
 """
-import sys
 import shutil
 import pandas as pd
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, AB_G_DYN_FILE
+from adtopo.config import DAT_DIR, AB_G_DYN_FILE
 
 
 def load_y2_true_age(ab_g_dyn_file):

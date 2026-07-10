@@ -24,7 +24,7 @@ Outputs:
   outputs/figures/encroachment/encroachment_descriptive_{tp}.{png,pdf}  (supplementary)
 """
 
-import sys, warnings
+import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -39,9 +39,10 @@ from statsmodels.stats.multitest import multipletests
 import statsmodels.formula.api as smf
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, TAB_DIR, FIG_DIR, OUT_DIR, TIMEPOINT_COV, NETWORKS
-from lib.re_models import fit_ols_cluster_table
+from adtopo.config import DAT_DIR, TAB_DIR, FIG_DIR, OUT_DIR, TIMEPOINT_COV, NETWORKS
+from adtopo.re_models import fit_ols_cluster_table
+from adtopo.logging_utils import get_logger
+_log = get_logger('encroachment_analysis')
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 ENC_DIR = OUT_DIR / 'encroachment'          # repo outputs/encroachment (was code/outputs/...)
@@ -94,7 +95,7 @@ mpl.rcParams.update({
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 def load_merged(tp):

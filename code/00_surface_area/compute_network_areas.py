@@ -18,7 +18,6 @@ Usage:
 """
 
 import os
-import sys
 import glob
 import argparse
 import traceback
@@ -28,8 +27,7 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import REPRO_DIR, XCP_DIR, DATA_DIR
+from adtopo.config import REPRO_DIR, XCP_DIR, DATA_DIR
 
 # ---------------------------------------------------------------------------
 # Constants

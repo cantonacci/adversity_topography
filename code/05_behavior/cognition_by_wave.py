@@ -11,15 +11,16 @@ covariates = age@W, sex, site@W (path b) and age_base/sex/fd_base/site_base (pat
 5000-family cluster bootstrap. Confirms whether crystallized is the only
 significant cross-sectional cognitive mediation and at which waves.
 """
-import sys, warnings
+import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np, pandas as pd
 import statsmodels.api as sm
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, TAB_DIR, RANDOM_SEED
+from adtopo.config import DAT_DIR, TAB_DIR, RANDOM_SEED
+from adtopo.logging_utils import get_logger
+_log = get_logger('cognition_by_wave')
 
 np.random.seed(RANDOM_SEED)
 N_BOOT = 5000
@@ -37,7 +38,7 @@ TESTS = [
     ('y6', 'df_y6.csv', FLUID, 'Fluid'),
 ]
 
-def log(m=''): print(m, flush=True)
+def log(m=''): _log.info(str(m))
 
 df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
 fb = 'fd' if 'fd' in df_base.columns else 'rest_mean_FD'

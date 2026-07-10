@@ -9,7 +9,6 @@ Reads:
 Updates (overwrites) in DAT_DIR:
   df_base.csv, df_y2.csv, df_y4.csv, df_y6.csv
 """
-import sys
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -18,19 +17,20 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import (
+from adtopo.config import (
     TAB_DIR, DAT_DIR, DATA_DIR,
     NIH_TOOLBOX_FILE, NIH_FLUID_COL, NIH_CRYST_COL, NIH_COLS,
     CBCL_FILE, CBCL_MEDIATION_OUTCOMES, CBCL_SRC_COLUMNS,
     COMPOSITE_COLS,
     NIH_FLUID_Y6_COL, NIH_CRYST_Y6_COL,
 )
+from adtopo.logging_utils import get_logger
+_log = get_logger('add_behavioral_outcomes')
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 def count_nonnan(df, cols, label):
     for col in cols:

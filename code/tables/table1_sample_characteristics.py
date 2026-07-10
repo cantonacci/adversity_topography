@@ -5,14 +5,14 @@ Table 1 sample-characteristics computation for the ELA-SCAN topography paper.
   - Section 3: included-vs-excluded generalizability comparison (supplement)
 Outputs plain text + a tidy CSV of Table 1 rows for drafting.
 """
-import sys
 import numpy as np, pandas as pd
 from pathlib import Path
 from scipy import stats
 
 BASE = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(BASE / 'code'))
-from lib.stats_utils import cramers_v
+from adtopo.stats_utils import cramers_v
+from adtopo.logging_utils import get_logger
+_log = get_logger('table1_sample_characteristics')
 DP   = BASE / 'outputs/data_processed'
 COV  = BASE / 'data/covariates/5_covariates_extended.xlsx'
 OUT  = BASE / 'outputs/tables/table1_sample_characteristics.txt'
@@ -21,7 +21,7 @@ TR_S = 0.8  # ABCD rsfMRI TR in seconds
 
 L=[]; rows=[]
 def log(s=''):
-    print(s); L.append(str(s))
+    _log.info(str(s)); L.append(str(s))
 def row(label, value, group=''):
     rows.append({'group':group,'label':label,'value':value})
 

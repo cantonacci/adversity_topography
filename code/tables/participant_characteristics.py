@@ -6,14 +6,14 @@ Participant-characteristics paragraph: supporting numbers.
   (4) included (n=4525) vs excluded (rest of ABCD baseline) demographic comparison
 Outputs a plain-text summary to outputs/tables/participant_characteristics_summary.txt
 """
-import sys
 import numpy as np, pandas as pd
 from pathlib import Path
 from scipy import stats
 
 BASE = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(BASE / 'code'))
-from lib.stats_utils import cramers_v
+from adtopo.stats_utils import cramers_v
+from adtopo.logging_utils import get_logger
+_log = get_logger('participant_characteristics')
 DAT  = BASE / 'outputs/data_processed/df_base.csv'
 COV  = BASE / 'data/covariates/5_covariates_extended.xlsx'
 OUT  = BASE / 'outputs/tables/participant_characteristics_summary.txt'
@@ -21,7 +21,7 @@ OUT  = BASE / 'outputs/tables/participant_characteristics_summary.txt'
 NETWORKS = ['DMN','VIS','FP','DAN','VAN','SAL','CO','SMD','SML','AUD','Tpole','MTL','PMN','PON','SCAN']
 L = []
 def log(s=''):
-    print(s); L.append(str(s))
+    _log.info(str(s)); L.append(str(s))
 
 base = pd.read_csv(DAT)
 log("="*70); log("(1) SAMPLE DESCRIPTORS — analytic baseline sample"); log("="*70)

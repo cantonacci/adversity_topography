@@ -33,8 +33,9 @@ from nibabel.cifti2 import cifti2_axes
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import ATLAS_DIR, REPRO_DIR, DAT_DIR
+from adtopo.config import ATLAS_DIR, REPRO_DIR, DAT_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('modal_atlas')
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 TIMEPOINT = 'baseline'
@@ -72,7 +73,7 @@ LABEL_INTS = np.array([NET_LABEL[n] for n in NETWORKS], dtype=np.int16)
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 def hex2rgba(h):

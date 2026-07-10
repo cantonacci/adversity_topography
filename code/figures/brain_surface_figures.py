@@ -12,7 +12,7 @@ Produces:
   brain_surface/old_style/FigureBrain_{Threat,Deprivation,Unpredictability}.{pdf,png}
 """
 
-import sys, os, tempfile, warnings
+import os, tempfile, warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -27,8 +27,9 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap, BoundaryN
 from nilearn import plotting
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import TAB_DIR, FIG_DIR, ATLAS_DIR
+from adtopo.config import TAB_DIR, FIG_DIR, ATLAS_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('brain_surface_figures')
 
 mpl.rcParams.update({
     'font.family':     'sans-serif',
@@ -83,7 +84,7 @@ VIEW_LABELS = ['L lateral', 'L medial', 'R medial', 'R lateral']
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 def _load_smooth_bg(curv_path):

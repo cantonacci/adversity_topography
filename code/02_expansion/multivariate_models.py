@@ -17,7 +17,6 @@ Outputs per tag and timepoint:
   TAB_DIR/phase3_{tag}_brain_surface_inputs.csv
   FIG_DIR/fig_phase3_{tag}_beta_heatmap_{timepoint}.png
 """
-import sys
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -33,14 +32,15 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import (
+from adtopo.config import (
     FIG_DIR, TAB_DIR, DAT_DIR,
     NETWORKS, ELA_COLS, ELA_LABELS_SHORT,
     COMPOSITE_COLS, COMPOSITE_LABELS_SHORT,
     N_TESTS, N_TESTS_COMPOSITES, BONFERRONI_ALPHA, RANDOM_SEED,
 )
-from lib.re_models import fit_ols_cluster_table
+from adtopo.re_models import fit_ols_cluster_table
+from adtopo.logging_utils import get_logger
+_log = get_logger('multivariate_models')
 
 np.random.seed(RANDOM_SEED)
 
@@ -65,7 +65,7 @@ plt.rcParams.update({
 
 log_lines = []
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
     log_lines.append(str(msg))
 
 # ── Load data ─────────────────────────────────────────────────────────────────

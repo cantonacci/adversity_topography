@@ -27,7 +27,7 @@ Lynch-style visualization workflow in Workbench:
   4. Load displaced_network dlabel → shows WHICH network is displaced (Panel C)
 """
 
-import sys, glob, warnings
+import glob, warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -37,8 +37,9 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR
+from adtopo.config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('encroachment_cifti')
 
 SCAN_LABEL  = 18
 N_CORT      = 59412
@@ -77,7 +78,7 @@ DF_FILES = {
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 # ── Shared state ──────────────────────────────────────────────────────────────

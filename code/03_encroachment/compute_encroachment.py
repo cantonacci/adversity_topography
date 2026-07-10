@@ -22,7 +22,7 @@ Outputs:
   outputs/encroachment/encroachment_{tp}.csv   (one row per subject, all 4 timepoints)
 """
 
-import sys, glob, warnings
+import glob, warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -32,8 +32,9 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR, XCP_DIR
+from adtopo.config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR, XCP_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('compute_encroachment')
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 SCAN_LABEL    = 18
@@ -71,7 +72,7 @@ TP_MAP = {
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 # ── Shared template (set once per worker process via initializer) ──────────────

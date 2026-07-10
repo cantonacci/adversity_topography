@@ -21,7 +21,6 @@ Outputs:
   TAB_DIR/supp_re_invariance_multivariate.csv
   DAT_DIR/supp_re_invariance.txt   (human-readable preview)
 """
-import sys
 import warnings
 from pathlib import Path
 
@@ -30,10 +29,10 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import TAB_DIR, DAT_DIR, COMPOSITE_COLS, COMPOSITE_LABELS
-from lib.re_models import fit_spec, SPECS, SPEC_LABELS
+from adtopo.config import TAB_DIR, DAT_DIR, COMPOSITE_COLS, COMPOSITE_LABELS
+from adtopo.re_models import fit_spec, SPECS, SPEC_LABELS
+from adtopo.logging_utils import get_logger
+_log = get_logger('re_specification_invariance')
 
 COVARIATES = ['interview_age', 'sex_num', 'fd']
 OUTCOME = 'prop_SCAN'
@@ -56,7 +55,7 @@ REPORTED_SPEC = {'bivariate': 'ols_cluster', 'multivariate': 'ols_cluster'}
 
 log_lines = []
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
     log_lines.append(str(msg))
 
 

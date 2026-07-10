@@ -22,8 +22,9 @@ import pandas as pd
 import nibabel as nib
 from pathlib import Path
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import TAB_DIR, ATLAS_DIR
+from adtopo.config import TAB_DIR, ATLAS_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('export_cifti_for_workbench')
 
 OUT_DIR = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -64,7 +65,7 @@ Lynch et al. 2024 (Nature) used: inflated/very_inflated fsLR-32k surfaces
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 def load_atlas_and_bm():

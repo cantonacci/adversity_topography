@@ -20,7 +20,6 @@ Steps:
   5. Save ela_composites.csv  (sub_ID + 3 composites + 10 z-scored factor cols)
   6. Save intercorrelation figure and domain-assignment figure
 """
-import sys
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -34,13 +33,14 @@ import matplotlib.colors as mcolors
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import (
+from adtopo.config import (
     BASE_DIR, DAT_DIR, FIG_DIR, TAB_DIR,
     ELA_COLS, ELA_LABELS_SHORT, ELA_REVERSE_CODED,
     ELA_THREAT_COLS, ELA_DEPRIVATION_COLS, ELA_UNPRED_COLS,
     COMPOSITE_COLS, COMPOSITE_LABELS,
 )
+from adtopo.logging_utils import get_logger
+_log = get_logger('build_ela_composites')
 
 plt.rcParams.update({
     'font.family':        'sans-serif',
@@ -92,7 +92,7 @@ FACTOR_LABELS = {
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 def make_composite(X_df, factor_cols):

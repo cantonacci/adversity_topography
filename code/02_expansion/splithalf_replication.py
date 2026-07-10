@@ -24,9 +24,7 @@ from scipy import stats
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-import sys
-sys.path.insert(0, str(ROOT / 'code'))
-from lib.re_models import fit_ols_cluster_table
+from adtopo.re_models import fit_ols_cluster_table
 DFB  = ROOT / 'outputs/data_processed/df_base.csv'
 OUT_CSV = ROOT / 'outputs/tables/A_splithalf_per_split.csv'
 OUT_TXT = ROOT / 'outputs/tables/A_splithalf_summary.txt'

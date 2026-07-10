@@ -16,7 +16,7 @@ Outputs (outputs/cifti_for_workbench/):
   scan_seed_fc_groupmean.dscalar.nii   (3 maps: high, low, high_minus_low)
 and (outputs/tables/): scan_seed_fc_groupmean.npz  (raw 59412-vectors + n)
 """
-import sys, glob, warnings
+import glob, warnings
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -25,8 +25,9 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, ATLAS_DIR, FC_DTSERIES_DIR, OUT_DIR, TAB_DIR
+from adtopo.config import DAT_DIR, ATLAS_DIR, FC_DTSERIES_DIR, OUT_DIR, TAB_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('seed_fc')
 
 FD_THRESH, MIN_FRAMES, N_CORT, N_FULL = 0.2, 375, 59412, 91282
 SCAN_LABEL, HIGH, LOW = 18, 1.0, -1.0
@@ -43,7 +44,7 @@ _atlas = _atlas_img.get_fdata()[0].astype(int)[:N_CORT]
 SEED_IDX = np.where(_atlas == SCAN_LABEL)[0]
 
 
-def log(m): print(m, flush=True)
+def log(m): _log.info(str(m))
 
 
 def _find(d, p):

@@ -29,7 +29,7 @@ Usage:
 Requires: wb_command in PATH (module load biology workbench/1.3.1)
 """
 
-import sys, glob, warnings, subprocess, argparse
+import glob, warnings, subprocess, argparse
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -39,8 +39,9 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import ATLAS_DIR, DAT_DIR, REPRO_DIR, XCP_DIR
+from adtopo.config import ATLAS_DIR, DAT_DIR, REPRO_DIR, XCP_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('generate_scan_borders')
 
 SCAN_LABEL = 18
 N_CORT     = 59412
@@ -67,7 +68,7 @@ SCAN_RGBA = (142 / 255, 0 / 255, 103 / 255, 1.0)
 
 
 def log(msg=''):
-    print(msg, flush=True)
+    _log.info(str(msg))
 
 
 # ── SCAN mask loading ─────────────────────────────────────────────────────────

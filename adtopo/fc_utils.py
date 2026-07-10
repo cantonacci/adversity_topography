@@ -8,9 +8,6 @@ Extracted verbatim from compute_fc.py / compute_fc_baseline.py, which were
 them locally; the only legitimate script-level differences (compute_fc.py's
 --session handling vs compute_fc_baseline.py hardcoding ses-00A, and their
 output paths) remain in the scripts themselves.
-
-Requires `config.py` to be importable (scripts do sys.path.insert of the code
-dir before importing lib.fc_utils).
 """
 
 import glob
@@ -20,7 +17,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 
-from config import NETWORKS
+from adtopo.config import NETWORKS
 
 # ── constants (identical across both FC scripts) ─────────────────────────────
 FD_THRESH  = 0.2

@@ -33,10 +33,13 @@ ROOT = Path(__file__).resolve().parents[2]
 DFB  = ROOT / 'outputs/data_processed/df_base.csv'
 OUT_TXT = ROOT / 'outputs/tables/B_sibling_discordance_summary.txt'
 
+from adtopo.logging_utils import get_logger
+_log = get_logger('sibling_discordance')
+
 FD, SITE, FAM = 'fd', 'study_site', 'family_id'
 L = []
 def log(s=''):
-    print(s); L.append(s)
+    _log.info(str(s)); L.append(s)
 
 df = pd.read_csv(DFB)
 need = ['sub_ID', FAM, 'threat_composite', 'prop_SCAN', 'interview_age', 'sex_num', FD, SITE]

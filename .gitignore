@@ -30,3 +30,15 @@ code/**/derived/
 
 # ── Manuscript workspace (private; not part of the public repository) ─────────
 manuscript/
+
+# Python packaging / test caches (round-2 refactor)
+*.egg-info/
+build/
+.pytest_cache/
+
+# round-2 verification scratch (not part of the pipeline)
+round2_verify.sbatch
+round2_finish_verify.sbatch
+compare_outputs.py
+outputs/_refactor_baseline/
+outputs/_round2_preDeltaR2_backup/

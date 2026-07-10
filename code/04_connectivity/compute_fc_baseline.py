@@ -17,7 +17,7 @@ Usage:
   python compute_fc_baseline.py --chunk-idx 0 --n-chunks 20
 """
 
-import sys, warnings, argparse
+import warnings, argparse
 from pathlib import Path
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -25,9 +25,8 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, REPRO_DIR, FC_DTSERIES_DIR
-from lib.fc_utils import (
+from adtopo.config import DAT_DIR, REPRO_DIR, FC_DTSERIES_DIR
+from adtopo.fc_utils import (
     MIN_FRAMES,
     BOLDMAP_GLOB, DTSERIES_GLOB, MOTION_GLOB,
     NET_NAMES, FC_COLS,

@@ -30,8 +30,9 @@ from matplotlib.colors import TwoSlopeNorm, LinearSegmentedColormap
 from matplotlib.patches import FancyBboxPatch
 import nibabel as nib
 
-sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, NETWORKS, ATLAS_DIR
+from adtopo.config import DAT_DIR, NETWORKS, ATLAS_DIR
+from adtopo.logging_utils import get_logger
+_log = get_logger('fc_figures')
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 FC_PATH    = DAT_DIR / 'fc_ses-00A.csv'
@@ -94,7 +95,7 @@ plt.rcParams.update({
 })
 
 
-def log(msg): print(msg, flush=True)
+def log(msg): _log.info(str(msg))
 
 
 def save(fig, stem):

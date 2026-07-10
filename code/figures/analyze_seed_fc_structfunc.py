@@ -11,7 +11,7 @@ Outputs:
   outputs/tables/seed_fc_structfunc_summary.txt
   outputs/figures/nn/fig3/fig3d_structfunc_vertexwise.{pdf,png}
 """
-import os, sys
+import os
 import numpy as np
 import pandas as pd
 import nibabel as nib
@@ -20,9 +20,10 @@ from scipy import stats
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ.setdefault('NEUROMAPS_DATA', str(ROOT / 'data/neuromaps_cache'))
-sys.path.insert(0, str(ROOT / 'code' / 'figures'))
 import figsrc as F
 fs = F.fs; fs.set_style()
+from adtopo.logging_utils import get_logger
+_log = get_logger('analyze_seed_fc_structfunc')
 
 from neuromaps.datasets import fetch_annotation
 from neuromaps.nulls import alexander_bloch
@@ -35,7 +36,7 @@ OUTT = ROOT / 'outputs/tables/seed_fc_structfunc_summary.txt'
 OUT  = str(F.FIG_OUT / 'fig3')
 F.Path(OUT).mkdir(parents=True, exist_ok=True)
 L = []
-def log(s=''): print(s, flush=True); L.append(s)
+def log(s=''): _log.info(str(s)); L.append(s)
 
 
 def cifti_to_full(img, mapidx=0):

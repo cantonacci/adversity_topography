@@ -22,7 +22,7 @@ from scipy.stats import pearsonr
 import statsmodels.api as sm
 
 import figsrc as F
-from config import (ELA_THREAT_COLS, ELA_DEPRIVATION_COLS, ELA_UNPRED_COLS,
+from adtopo.config import (ELA_THREAT_COLS, ELA_DEPRIVATION_COLS, ELA_UNPRED_COLS,
                     ELA_LABELS_SHORT, COMPOSITE_COLS, COMPOSITE_LABELS,
                     BONFERRONI_ALPHA)
 

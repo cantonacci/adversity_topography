@@ -2,7 +2,6 @@
 Factors are shown in composite-aligned orientation (higher = more adversity),
 matching how they enter the threat/deprivation/unpredictability composites.
 """
-import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -10,9 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import BASE_DIR as ROOT
+from adtopo.config import BASE_DIR as ROOT
 comp = pd.read_csv(ROOT / 'outputs/tables/ela_composites.csv')
 
 # composite-aligned factor columns (_z) grouped by composite, then the composites

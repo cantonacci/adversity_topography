@@ -8,15 +8,13 @@ connectivity profile shift; the difference map mirrors the Fig 3a β surface.
 Output: outputs/cifti_for_workbench/fc_scan_groupmean_fingerprint.dscalar.nii
   (3 maps: SCANfc_high, SCANfc_low, SCANfc_high_minus_low)
 """
-import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import nibabel as nib
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "code"))
-from config import DAT_DIR, ATLAS_DIR
+from adtopo.config import DAT_DIR, ATLAS_DIR
 
 FC_PATH = DAT_DIR / "fc_ses-00A.csv"
 BASE    = ROOT / "outputs/data_processed/df_base.csv"

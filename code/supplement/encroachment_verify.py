@@ -3,15 +3,12 @@ Replicates the exact definitions in code/figures/fig2_panels.py so we can
 reconcile the docx numbers (composition shares, zone shares, zone x network
 interaction) against the current data. Prints only; writes nothing.
 """
-import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import ttest_1samp
 
-_CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
-sys.path.insert(0, str(_CODE))
-from config import DAT_DIR, BASE_DIR as ROOT
+from adtopo.config import DAT_DIR, BASE_DIR as ROOT
 
 NETS14 = ["DMN", "VIS", "FP", "DAN", "VAN", "SAL", "CO", "SMD", "SML", "AUD",
           "Tpole", "MTL", "PMN", "PON"]

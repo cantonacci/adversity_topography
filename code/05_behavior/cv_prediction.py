@@ -30,6 +30,9 @@ from sklearn.metrics import r2_score
 from scipy import stats
 from pathlib import Path
 
+from adtopo.logging_utils import get_logger
+_log = get_logger('cv_prediction')
+
 ROOT = Path(__file__).resolve().parents[2]
 DFB  = ROOT / 'outputs/data_processed/df_base.csv'
 OUT  = ROOT / 'outputs/tables/H_cv_prediction_summary.txt'
@@ -40,7 +43,7 @@ THREAT  = 'threat_composite'
 AGE6, SEX, FD6, SITE6, FAM = 'interview_age_6yrFU', 'sex_num', 'rest_mean_FD_6yrFU', 'study_site_6yrFU', 'family_id'
 N_REPEATS, N_FOLDS, N_PERM = 20, 10, 1000
 L = []
-def log(s=''): print(s); L.append(s)
+def log(s=''): _log.info(str(s)); L.append(s)
 
 df = pd.read_csv(DFB)
 cols = [OUTCOME, SCANCOL, THREAT, AGE6, SEX, FD6, SITE6, FAM]
