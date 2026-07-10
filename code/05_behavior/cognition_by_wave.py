@@ -16,7 +16,6 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np, pandas as pd
 import statsmodels.api as sm
-from statsmodels.regression.mixed_linear_model import MixedLM
 from pathlib import Path
 
 sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
@@ -55,11 +54,9 @@ def path_a(frame):
     cols=[PRED,'age_base','sex_num','fd_base']
     t=frame[[MED]+cols+['site_base','family_id']].dropna()
     X=design(t,cols,'site_base')
-    try:
-        r=MixedLM(t[MED].values,X,groups=t['family_id'].values,
-                  exog_re=np.ones((len(t),1))).fit(reml=True,method='lbfgs',maxiter=200)
-        if r.converged: return r.params[1], r.pvalues[1]
-    except Exception: pass
+    # Plain OLS so the reported point path-a uses the same estimator as the bootstrap
+    # (which resamples with OLS). The family-RE MixedLM was singular and fell back to
+    # OLS at every wave, so this is numerically identical and removes the latent mismatch.
     r=sm.OLS(t[MED].values,X).fit(); return r.params[1], r.pvalues[1]
 
 def boot(seed, fg, Xa, ya, Xb, yb, midx):
@@ -90,7 +87,7 @@ for wave, f, meas, mname in TESTS:
     n = len(t)
     ba, pa = path_a(t)
     Xb = design(t, cb, 'site_w'); yb = t['outcome'].values.astype(float)
-    rb = sm.OLS(yb, Xb).fit(cov_type='HC3'); midx = 1 + cb.index(MED)
+    rb = sm.OLS(yb, Xb).fit(cov_type='cluster', cov_kwds={'groups': t['family_id'].values}); midx = 1 + cb.index(MED)
     bb, pb = rb.params[midx], rb.pvalues[midx]
     ind = ba*bb
     ca=[PRED,'age_base','sex_num','fd_base']
