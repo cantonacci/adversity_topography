@@ -12,7 +12,8 @@ covariates = age@W, sex, site@W (path b) and age_base/sex/fd_base/site_base (pat
 significant cross-sectional cognitive mediation and at which waves.
 """
 import sys, warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np, pandas as pd
 import statsmodels.api as sm
 from statsmodels.regression.mixed_linear_model import MixedLM

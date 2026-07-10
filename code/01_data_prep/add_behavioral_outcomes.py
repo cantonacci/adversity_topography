@@ -11,7 +11,8 @@ Updates (overwrites) in DAT_DIR:
 """
 import sys
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 import numpy as np
 import pandas as pd
@@ -71,10 +72,10 @@ for df in [df_base, df_y2, df_y4, df_y6]:
 
 comp_merge = comp_scores[['sub_ID'] + COMPOSITE_COLS].copy()
 
-df_base = df_base.merge(comp_merge, on='sub_ID', how='left')
-df_y2   = df_y2.merge(comp_merge,  on='sub_ID', how='left')
-df_y4   = df_y4.merge(comp_merge,  on='sub_ID', how='left')
-df_y6   = df_y6.merge(comp_merge,  on='sub_ID', how='left')
+df_base = df_base.merge(comp_merge, on='sub_ID', how='left', validate='many_to_one')
+df_y2   = df_y2.merge(comp_merge,  on='sub_ID', how='left', validate='many_to_one')
+df_y4   = df_y4.merge(comp_merge,  on='sub_ID', how='left', validate='many_to_one')
+df_y6   = df_y6.merge(comp_merge,  on='sub_ID', how='left', validate='many_to_one')
 
 log('  Composite scores merged. Non-NaN counts:')
 for label, df in [('baseline', df_base), ('year-2', df_y2),
@@ -134,7 +135,7 @@ for tp, df_ref in tp_df_map.items():
     for col in nih_avail_cols:
         if col in df_ref.columns:
             df_ref.drop(columns=[col], inplace=True)
-    merged = df_ref.merge(nih_tp, on='sub_ID', how='left')
+    merged = df_ref.merge(nih_tp, on='sub_ID', how='left', validate='many_to_one')
     tp_df_map[tp] = merged
 
 df_base = tp_df_map['00A']
@@ -157,14 +158,14 @@ nih_y6_fluid = nih[nih['timepoint'] == '06A'][['sub_ID', NIH_FLUID_COL]].copy()
 nih_y6_fluid = nih_y6_fluid.rename(columns={NIH_FLUID_COL: NIH_FLUID_Y6_COL}).dropna(subset=[NIH_FLUID_Y6_COL])
 if NIH_FLUID_Y6_COL in df_base.columns:
     df_base.drop(columns=[NIH_FLUID_Y6_COL], inplace=True)
-df_base = df_base.merge(nih_y6_fluid, on='sub_ID', how='left')
+df_base = df_base.merge(nih_y6_fluid, on='sub_ID', how='left', validate='many_to_one')
 log(f'    {NIH_FLUID_Y6_COL} in df_base: N={df_base[NIH_FLUID_Y6_COL].notna().sum()}')
 
 nih_y6_cryst = nih[nih['timepoint'] == '06A'][['sub_ID', NIH_CRYST_COL]].copy()
 nih_y6_cryst = nih_y6_cryst.rename(columns={NIH_CRYST_COL: NIH_CRYST_Y6_COL}).dropna(subset=[NIH_CRYST_Y6_COL])
 if NIH_CRYST_Y6_COL in df_base.columns:
     df_base.drop(columns=[NIH_CRYST_Y6_COL], inplace=True)
-df_base = df_base.merge(nih_y6_cryst, on='sub_ID', how='left')
+df_base = df_base.merge(nih_y6_cryst, on='sub_ID', how='left', validate='many_to_one')
 log(f'    {NIH_CRYST_Y6_COL} in df_base: N={df_base[NIH_CRYST_Y6_COL].notna().sum()}')
 tp_df_map['00A'] = df_base  # sync after step-2b reassignment
 
@@ -205,7 +206,7 @@ for tp, df_ref in tp_df_map.items():
     for col in cbcl_avail_cols:
         if col in df_ref.columns:
             df_ref.drop(columns=[col], inplace=True)
-    merged = df_ref.merge(cbcl_tp, on='sub_ID', how='left')
+    merged = df_ref.merge(cbcl_tp, on='sub_ID', how='left', validate='many_to_one')
     tp_df_map[tp] = merged
 
 df_base = tp_df_map['00A']

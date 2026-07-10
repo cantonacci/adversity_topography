@@ -48,7 +48,7 @@ else:
 old_mean = df['interview_age'].mean()
 
 # 3. Merge + overwrite
-df = df.merge(y2age, on='sub_ID', how='left')
+df = df.merge(y2age, on='sub_ID', how='left', validate='many_to_one')
 n_match = df['age_y2_true'].notna().sum()
 n_miss  = df['age_y2_true'].isna().sum()
 print(f'df_y2 N={len(df)}: matched={n_match}, unmatched={n_miss}')

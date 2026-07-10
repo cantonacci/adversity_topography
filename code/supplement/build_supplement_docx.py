@@ -3,6 +3,7 @@ Formatting modeled on the author's example journal supplements. Reads verified
 tables from outputs/tables/. Does NOT overwrite the user's Supplement.docx.
 """
 import sys
+import re as _re   # aliased: Table S1 below uses a DataFrame named `re`
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -13,8 +14,9 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 
 _CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
 sys.path.insert(0, str(_CODE))
-from config import BASE_DIR as ROOT
+from config import BASE_DIR as ROOT, CBCL_MEDIATION_OUTCOMES
 TAB = ROOT / 'outputs' / 'tables'
+WP  = ROOT / 'code/05_behavior/within_person/derived/results_within_person_cbcl.txt'
 OUT = ROOT / 'manuscript' / 'Supplement_full_draft.docx'
 
 FONT = 'Times New Roman'
@@ -186,14 +188,15 @@ heading('Associations with psychopathology (CBCL)', size=11)
 para("To complement the cognitive analyses, we tested whether baseline SCAN size mediated the association "
      "between threat and each of 14 Child Behavior Checklist (CBCL) syndrome and DSM-oriented subscales "
      "at year 6, using the same bootstrapped (5,000 family-clustered resamples), covariate-matched "
-     "mediation framework applied to cognition (Table S6). A larger SCAN was associated with fewer "
-     "problems on three subscales—Attention Problems, DSM-5 ADHD, and Thought Problems (indirect "
-     "effects all FDR q < .05)—the direction opposite to the cognitive cost. Unlike the cognitive "
-     "pathway, however, these psychopathology associations did not track within-person change in SCAN "
-     "size across waves (all p > .35; Table S7). We therefore interpret the SCAN–psychopathology "
-     "relationship as a stable, trait-like correlate rather than a dynamic developmental pathway, and "
-     "treat it with greater caution than the cognitive findings, which are supported by converging "
-     "cross-sectional, within-person, and out-of-sample evidence.")
+     "mediation framework applied to cognition (Table S6). No subscale showed a significant indirect "
+     "effect: none survived FDR correction and every bootstrap confidence interval included zero "
+     "(all bootstrap p > .05; all FDR q > .47). Consistent with this, within-person change in SCAN "
+     "size did not track within-person change in any of the 14 subscales after FDR correction "
+     "(Table S7): three subscales showed a nominal association (p < .05) but none survived correction "
+     "(all q > .06). Across both cross-sectional and within-person tests, and after correction for "
+     "multiple comparisons, we found no evidence that SCAN size relates to concurrent or developing "
+     "psychopathology, underscoring the specificity of the SCAN–cognition association reported in the "
+     "main text.")
 
 doc.add_page_break()
 heading('Supplementary Tables', size=13)
@@ -298,6 +301,7 @@ note('Note.', "All ten adversity factors entered simultaneously into a single OL
 # ---- Table S6: CBCL cross-sectional mediation
 med = pd.read_csv(TAB / 'phase6_mediation_SCAN.csv')
 cbcl = med[med['outcome'].str.startswith('cbcl')].copy()
+n_cbcl = int(cbcl['n'].iloc[0])
 para('Table S6. SCAN mediation of threat and year-6 CBCL psychopathology', bold=True, size=11, space_after=4)
 rowsS6 = []
 for _, r in cbcl.iterrows():
@@ -307,23 +311,33 @@ for _, r in cbcl.iterrows():
     rowsS6.append([lbl + sig, f"{r['indirect']:.3f}", ci, fmt_p(r['boot_p']),
                    fmt_q(r['q_FDR_indirect'])])
 add_table(['CBCL subscale', 'Indirect effect', '95% CI', 'Bootstrap p', 'FDR q'], rowsS6)
-note('Note.', "Indirect effect of threat on each year-6 CBCL subscale through baseline SCAN size "
-     "(n = 1,495), bootstrapped over 5,000 family-clustered resamples with a matched baseline-subscale "
-     "covariate. Negative indirect effects indicate that a larger SCAN is associated with fewer problems. "
-     "* FDR q < .05 across the 14 subscales.")
+note('Note.', f"Indirect effect of threat on each year-6 CBCL subscale through baseline SCAN size "
+     f"(n = {n_cbcl:,}), bootstrapped over 5,000 family-clustered resamples with a matched "
+     "baseline-subscale covariate. Negative indirect effects would indicate that a larger SCAN is "
+     "associated with fewer problems. No subscale reached significance: every 95% confidence interval "
+     "includes zero and no indirect effect survives FDR correction across the 14 subscales.")
 
 # ---- Table S7: within-person CBCL
 para('Table S7. Within-person SCAN change and CBCL psychopathology', bold=True, size=11, space_after=4)
-rowsS7 = [
- ['Attention Problems', '+0.012', '0.440', 'n.s.'],
- ['DSM-5 ADHD', '+0.014', '0.351', 'n.s.'],
- ['Thought Problems', '−0.004', '0.768', 'n.s.'],
-]
-add_table(['CBCL subscale', 'Within-person β', 'p', 'Significance'], rowsS7)
-note('Note.', "All-waves within-person models (n = 6,042 observations from 3,405 children) relating "
-     "within-person change in SCAN size to within-person change in each of the three CBCL subscales that "
-     "showed a significant cross-sectional mediation (Table S6). None tracks within-person SCAN change, "
-     "supporting a stable, trait-like interpretation.")
+# Result 2 (ΔSCAN → ΔCBCL), all-waves, all 14 subscales, parsed from the results file.
+_wp = WP.read_text()
+def _r2(nm):
+    m = _re.search(rf"R2 all-waves {_re.escape(nm)}: N=(\d+) \((\d+) subj\) β=([+-][\d.]+)\s+"
+                   rf"p=([\d.]+)(?:\s*\*+)?\s+q=([\d.]+)", _wp)
+    return m.group(1), m.group(2), m.group(3), float(m.group(4)), float(m.group(5))
+rowsS7 = []
+_Nobs = _Nsub = None
+for _src, _lbl in CBCL_MEDIATION_OUTCOMES.items():
+    _Nobs, _Nsub, _b, _p, _q = _r2(_lbl)   # results file labels rows by display name
+    rowsS7.append([_lbl.replace('DSM5', 'DSM-5'), _b.replace('-', '−'), fmt_p(_p), fmt_q(_q)])
+add_table(['CBCL subscale', 'Within-person β', 'p', 'FDR q'], rowsS7)
+note('Note.', f"All-waves within-person models (n = {int(_Nobs):,} observations from {int(_Nsub):,} "
+     "children) relating within-person change in SCAN size to within-person change in each of the 14 "
+     "CBCL subscales, adjusting for baseline levels, change in head motion, time between waves, baseline "
+     "age, and sex, with a subject random intercept and family-cluster-robust standard errors. FDR "
+     "corrected across the 14 subscales. No subscale survives correction (all q > .06); the three "
+     "nominal associations (p < .05) do not, so within-person SCAN change does not track change in "
+     "psychopathology, consistent with the null cross-sectional mediation in Table S6.")
 
 doc.add_page_break()
 heading('Supplementary Figures', size=13)

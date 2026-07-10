@@ -19,21 +19,22 @@ and (outputs/tables/): scan_seed_fc_groupmean.npz  (raw 59412-vectors + n)
 import sys, glob, warnings
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 import nibabel as nib
 
 sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR, ATLAS_DIR, FC_DTSERIES_DIR
+from config import DAT_DIR, ATLAS_DIR, FC_DTSERIES_DIR, OUT_DIR, TAB_DIR
 
 FD_THRESH, MIN_FRAMES, N_CORT, N_FULL = 0.2, 375, 59412, 91282
 SCAN_LABEL, HIGH, LOW = 18, 1.0, -1.0
 N_JOBS = min(16, cpu_count())
 FC_DIR = FC_DTSERIES_DIR
 ATLAS  = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
-OUT_C  = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
-OUT_T  = Path(__file__).parent.parent / 'outputs' / 'tables'
+OUT_C  = OUT_DIR / 'cifti_for_workbench'   # repo outputs/ (was code/outputs/ — stray path)
+OUT_T  = TAB_DIR                            # repo outputs/tables
 DTGLOB = '*_task-rest_space-fsLR_den-91k_desc-denoisedSmoothed_bold.dtseries.nii'
 MOGLOB = '*_task-rest_motion.tsv'
 
@@ -64,8 +65,13 @@ def seed_fc_map(args):
             return None
         cort = nib.load(dt).get_fdata()[:, :N_CORT].astype(np.float32)
         nT = cort.shape[0]
-        mm = m if nT == len(m) else (m[:nT] if nT < len(m)
-                                     else np.concatenate([m, np.zeros(nT - len(m), bool)]))
+        if nT == len(m):
+            mm = m
+        else:
+            log(f'  WARNING frame/motion mismatch {sub}/ses-00A: '
+                f'n_TRs={nT} n_mot={len(m)} — truncating/padding mask to n_TRs')
+            mm = (m[:nT] if nT < len(m)
+                  else np.concatenate([m, np.zeros(nT - len(m), bool)]))
         cort = cort[mm]
         if cort.shape[0] < MIN_FRAMES:
             return None
@@ -91,6 +97,8 @@ def main():
     args = [(s, 'high') for s in hi] + [(s, 'low') for s in lo]
 
     sums = {'high': np.zeros(N_CORT, np.float64), 'low': np.zeros(N_CORT, np.float64)}
+    # per-vertex count of finite contributions (denominator for the group mean)
+    counts = {'high': np.zeros(N_CORT, np.int64), 'low': np.zeros(N_CORT, np.int64)}
     ns = {'high': 0, 'low': 0}
     done = 0
     with Pool(N_JOBS) as pool:
@@ -103,11 +111,21 @@ def main():
             grp, vec = res
             ok = np.isfinite(vec)
             sums[grp][ok] += vec[ok]
+            counts[grp][ok] += 1
             ns[grp] += 1
     log(f'Loaded: high {ns["high"]}/{len(hi)}, low {ns["low"]}/{len(lo)}')
 
-    high_mean = (sums['high'] / max(ns['high'], 1)).astype(np.float32)
-    low_mean = (sums['low'] / max(ns['low'], 1)).astype(np.float32)
+    def group_mean(grp):
+        # divide each vertex's sum by its per-vertex finite count; where a vertex
+        # got zero finite contributions -> NaN (avoid divide-by-zero).
+        c = counts[grp]
+        out = np.full(N_CORT, np.nan, np.float64)
+        nz = c > 0
+        out[nz] = sums[grp][nz] / c[nz]
+        return out.astype(np.float32)
+
+    high_mean = group_mean('high')
+    low_mean = group_mean('low')
     diff = (high_mean - low_mean).astype(np.float32)
     # seed region itself → NaN (coupling to the rest of cortex)
     for arr in (high_mean, low_mean, diff):

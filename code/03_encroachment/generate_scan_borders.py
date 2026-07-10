@@ -30,7 +30,8 @@ Requires: wb_command in PATH (module load biology workbench/1.3.1)
 """
 
 import sys, glob, warnings, subprocess, argparse
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 import numpy as np
 import pandas as pd

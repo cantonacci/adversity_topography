@@ -5,11 +5,14 @@ Table 1 sample-characteristics computation for the ELA-SCAN topography paper.
   - Section 3: included-vs-excluded generalizability comparison (supplement)
 Outputs plain text + a tidy CSV of Table 1 rows for drafting.
 """
+import sys
 import numpy as np, pandas as pd
 from pathlib import Path
 from scipy import stats
 
 BASE = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BASE / 'code'))
+from lib.stats_utils import cramers_v
 DP   = BASE / 'outputs/data_processed'
 COV  = BASE / 'data/covariates/5_covariates_extended.xlsx'
 OUT  = BASE / 'outputs/tables/table1_sample_characteristics.txt'
@@ -154,16 +157,6 @@ log("\n"+"="*72); log("SECTION 3 — INCLUDED vs EXCLUDED (supplement)"); log("=
 cov=pd.read_excel(COV)
 cov['included']=cov['sub_ID'].isin(set(base['sub_ID']))
 log(f"  Full baseline cohort N={len(cov)}  included={int(cov['included'].sum())}  excluded={int((~cov['included']).sum())}")
-def cramers_v(ct):
-    """Bias-corrected Cramér's V (Bergsma, 2013), which removes the upward bias
-    of the uncorrected statistic in large / non-square tables."""
-    chi2 = stats.chi2_contingency(ct)[0]; n = ct.values.sum(); r, k = ct.shape
-    phi2 = chi2 / n
-    phi2c = max(0.0, phi2 - (k - 1) * (r - 1) / (n - 1))
-    rc = r - (r - 1) ** 2 / (n - 1)
-    kc = k - (k - 1) ** 2 / (n - 1)
-    denom = min(kc - 1, rc - 1)
-    return float(np.sqrt(phi2c / denom)) if denom > 0 else np.nan
 def cat_compare(col,mapper=None,label=None):
     if col not in cov.columns: log(f"  [{col}] not in COV"); return
     s=cov[[col,'included']].dropna().copy()

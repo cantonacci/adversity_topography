@@ -107,10 +107,10 @@ def build_analysis_sample(df_topo, df_ela, df_cov, session, label):
     fd_col, site_col = tcov['fd'], tcov['site']
     age_col, age_in_months = tcov['age'], tcov['age_in_months']
 
-    df = df_topo.merge(df_ela, on='sub_ID', how='inner')
+    df = df_topo.merge(df_ela, on='sub_ID', how='inner', validate='one_to_one')
     # sex comes from df_ela; drop from df_cov if present to avoid _x/_y conflict
     df_cov_merge = df_cov.drop(columns=['sex'], errors='ignore')
-    df = df.merge(df_cov_merge, on='sub_ID', how='inner')
+    df = df.merge(df_cov_merge, on='sub_ID', how='inner', validate='one_to_one')
     log(f'  [{label}] After merge: N={len(df)}')
 
     before = len(df)

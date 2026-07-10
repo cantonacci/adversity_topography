@@ -23,7 +23,8 @@ import sys
 import warnings
 from pathlib import Path
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
@@ -31,6 +32,7 @@ import statsmodels.formula.api as smf
 _CODE = next(a for a in Path(__file__).resolve().parents if (a / 'config.py').exists())
 sys.path.insert(0, str(_CODE))
 from config import TAB_DIR, DAT_DIR, NETWORKS, COMPOSITE_COLS, COMPOSITE_LABELS
+from lib.bayes_factors import _bic, bf10_from_bic, label_bf
 
 COVARS = ['interview_age', 'sex_num', 'fd']
 SITE = 'study_site'
@@ -38,26 +40,6 @@ SITE = 'study_site'
 log_lines = []
 def log(m=''):
     print(m, flush=True); log_lines.append(str(m))
-
-
-def _bic(df, outcome, terms):
-    """BIC of OLS: outcome ~ terms + C(site). terms is a list (may be empty)."""
-    rhs = ' + '.join(terms + [f'C({SITE})']) if terms else f'C({SITE})'
-    return smf.ols(f'{outcome} ~ {rhs}', data=df).fit().bic
-
-
-def bf10_from_bic(bic_null, bic_full):
-    return float(np.exp((bic_null - bic_full) / 2.0))
-
-
-def label_bf(bf10):
-    """Kass & Raftery verbal label for the evidence (toward H1 or H0)."""
-    bf, direction = (bf10, 'H1') if bf10 >= 1 else (1.0 / bf10, 'H0')
-    if bf < 3:    strength = 'not worth mentioning'
-    elif bf < 20: strength = 'positive'
-    elif bf < 150: strength = 'strong'
-    else:         strength = 'very strong'
-    return f'{strength} for {direction}'
 
 
 df = pd.read_csv(DAT_DIR / 'df_base.csv')

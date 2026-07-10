@@ -29,7 +29,7 @@ from statsmodels.regression.mixed_linear_model import MixedLM
 from statsmodels.stats.multitest import multipletests
 
 sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
-from config import DAT_DIR
+from config import DAT_DIR, CBCL_MEDIATION_OUTCOMES
 
 DERIVED = Path(__file__).parent / 'derived'
 
@@ -37,12 +37,12 @@ print('=' * 68)
 print('Within-person analyses — SCAN × ELA × CBCL')
 print('=' * 68)
 
-CBCL = {  # source col -> short name
-    'cbcl_scr_syn_attention_r': 'att',
-    'cbcl_scr_dsm5_adhd_r':     'adhd',
-    'cbcl_scr_syn_thought_r':   'thought',
-}
-LABEL = {'att': 'Attention Problems', 'adhd': 'DSM5 ADHD', 'thought': 'Thought Problems'}
+# All 14 CBCL subscales (identity mapping: keep the raw cbcl_scr_*_r column names as
+# the working keys). Previously restricted to the 3 subscales that were significant in
+# the cross-sectional mediation; with no significant cross-sectional effects there is no
+# basis for that filter, so we test all 14 with FDR across the full family.
+CBCL  = {src: src for src in CBCL_MEDIATION_OUTCOMES}   # source col -> working key (identity)
+LABEL = dict(CBCL_MEDIATION_OUTCOMES)                   # source col -> display label
 
 # ── Load long SCAN/topography + ELA ───────────────────────────────────────────
 d   = pd.read_csv(DERIVED / 'scan_topo_long.csv')
@@ -171,8 +171,8 @@ def fmt(b, p):
     return f'β={b:+.4f}  p={p:.4f} {sig}'
 
 
-lines = ['Within-person SCAN × ELA × CBCL (3 FDR-sig subscales)',
-         'ELA: 4-item threat_composite; FDR BH within 3-subscale family', '']
+lines = ['Within-person SCAN × ELA × CBCL (all 14 subscales)',
+         'ELA: 4-item threat_composite; FDR BH within 14-subscale family', '']
 
 # ══════════════════════════════════════════════════════════════════════════════
 # RESULT 2 (CBCL): ΔSCAN → ΔCBCL   (does SCAN change track CBCL change?)

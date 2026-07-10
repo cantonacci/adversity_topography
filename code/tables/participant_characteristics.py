@@ -6,11 +6,14 @@ Participant-characteristics paragraph: supporting numbers.
   (4) included (n=4525) vs excluded (rest of ABCD baseline) demographic comparison
 Outputs a plain-text summary to outputs/tables/participant_characteristics_summary.txt
 """
+import sys
 import numpy as np, pandas as pd
 from pathlib import Path
 from scipy import stats
 
 BASE = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BASE / 'code'))
+from lib.stats_utils import cramers_v
 DAT  = BASE / 'outputs/data_processed/df_base.csv'
 COV  = BASE / 'data/covariates/5_covariates_extended.xlsx'
 OUT  = BASE / 'outputs/tables/participant_characteristics_summary.txt'
@@ -69,17 +72,6 @@ cov = pd.read_excel(COV)
 cov['included'] = cov['sub_ID'].isin(set(base['sub_ID']))
 log(f"  COV_FILE N={len(cov)}  included={cov['included'].sum()}  excluded={(~cov['included']).sum()}")
 log(f"  COV columns: {list(cov.columns)}")
-
-def cramers_v(ct):
-    """Bias-corrected Cramér's V (Bergsma, 2013), which removes the upward bias
-    of the uncorrected statistic in large / non-square tables."""
-    chi2 = stats.chi2_contingency(ct)[0]; n = ct.values.sum(); r, k = ct.shape
-    phi2 = chi2 / n
-    phi2c = max(0.0, phi2 - (k - 1) * (r - 1) / (n - 1))
-    rc = r - (r - 1) ** 2 / (n - 1)
-    kc = k - (k - 1) ** 2 / (n - 1)
-    denom = min(kc - 1, rc - 1)
-    return float(np.sqrt(phi2c / denom)) if denom > 0 else np.nan
 
 def cat_compare(col):
     if col not in cov.columns: log(f"  [{col}] not in COV"); return
