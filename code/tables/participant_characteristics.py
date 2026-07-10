@@ -27,7 +27,7 @@ log(f"  N unique families     : {base['family_id'].nunique()}")
 log(f"  N study sites         : {base['study_site'].nunique()}")
 sib = base['family_id'].duplicated(keep=False).sum()
 log(f"  Children with a sibling in sample: {sib}")
-age_yr = base['interview_age']/12.0
+age_yr = base['interview_age']  # already in YEARS (see build_analysis_dataframes.py)
 log(f"  Age (yr): mean={age_yr.mean():.2f} SD={age_yr.std():.2f} range[{age_yr.min():.1f},{age_yr.max():.1f}]")
 log(f"  sex value_counts: {base['sex'].value_counts().to_dict()}")
 

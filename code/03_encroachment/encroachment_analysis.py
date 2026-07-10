@@ -124,7 +124,7 @@ def load_merged(tp):
     if age_col not in df.columns:
         age_col = next((c for c in ['interview_age'] if c in df.columns), None)
     if any(v is None for v in [fd_col, site_col, age_col]):
-        log(f'  WARNING: could not find FD/site/age column in {df_file} — skipping')
+        log(f'  WARNING: could not find FD/site/age column in {df_path.name} — skipping')
         return None
 
     keep = ['sub_ID', 'family_id', 'sex_num',

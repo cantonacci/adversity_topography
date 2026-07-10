@@ -38,17 +38,20 @@ COVARIATES = ['interview_age', 'sex_num', 'fd']
 OUTCOME = 'prop_SCAN'
 
 # Currently reported baseline values (for the explicit old-vs-new delta).
+# These are the CANONICAL ols_cluster values that the manuscript reports
+# (phase2_composites_r_matrix_baseline.csv), not the pre-convergence numbers.
 REPORTED_BIVARIATE_PARTIAL_R = {         # code/02_expansion bivariate, baseline
-    'threat_composite':          0.1578,
-    'unpredictability_composite': 0.0979,
-    'deprivation_composite':      0.0900,
+    'threat_composite':          0.1512,
+    'unpredictability_composite': 0.0954,
+    'deprivation_composite':      0.0860,
 }
 REPORTED_MULTIVARIATE_BETA = {           # code/02_expansion multivariate, baseline
     'threat_composite': 0.0023,          # deprivation/unpred not separately reported
 }
 
-# The specification currently used to produce each reported number, for context.
-REPORTED_SPEC = {'bivariate': 're_family', 'multivariate': 're_crossed'}
+# The specification that produces each reported number, for context. The manuscript
+# reports the canonical ols_cluster spec (re_models.CANONICAL_SPEC).
+REPORTED_SPEC = {'bivariate': 'ols_cluster', 'multivariate': 'ols_cluster'}
 
 log_lines = []
 def log(msg=''):

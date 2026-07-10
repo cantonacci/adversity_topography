@@ -111,10 +111,10 @@ fi
 if want D; then
   if [ "$SKIP_HEAVY" -eq 0 ]; then
     echo "  NOTE: FC matrices are computed via array jobs, not inline. Submit separately:"
-    echo "    ARR=\$(sbatch --parsable code/03_connectivity/fc_compute_baseline.sbatch)"
+    echo "    ARR=\$(sbatch --parsable code/04_connectivity/fc_compute_baseline.sbatch)"
     echo "    sbatch --dependency=afterok:\$ARR ... then fc_analysis below. Skipping inline recompute."
   else
-    echo "  (skip) 03_connectivity/compute_fc*.py  [SKIP_HEAVY=1; uses existing fc_ses-*.csv]"
+    echo "  (skip) 04_connectivity/compute_fc*.py  [SKIP_HEAVY=1; uses existing fc_ses-*.csv]"
   fi
   run 04_connectivity/fc_analysis.py
   run 04_connectivity/encroach_fc_correspondence.py

@@ -124,8 +124,12 @@ for c in fe_cols:
 Xfe = ms[['threat_composite_dm', 'age_dm', 'fd_dm']].values  # no intercept (demeaned)
 yfe = ms['prop_SCAN_dm'].values
 rfe = sm.OLS(yfe, Xfe).fit(cov_type='cluster', cov_kwds={'groups': ms[FAM]})
-# df correction note: demeaning consumes n_families params; statsmodels cluster SE
-# uses n_clusters-based correction which is appropriate here.
+# SE note: inference uses the family-cluster-robust (sandwich) SE reported below
+# (rfe.bse), NOT the classical OLS SE. The sandwich variance is a function of the
+# G=n_families cluster score-sums and its small-sample correction scales with G, so
+# it is not sensitive to the residual-df bookkeeping (nobs - k) that the within-
+# demeaning would distort for a *classical* SE. Verified on these data: the reported
+# cluster SE matches an explicit family-dummy + classical-SE fit to ~1 decimal place.
 log(f'  N obs={len(ms)} from {ms[FAM].nunique()} multi-sib families')
 log(f'  threat (within) beta={rfe.params[0]:+.6f}  se={rfe.bse[0]:.6f}  '
     f'z={rfe.tvalues[0]:+.2f}  p={rfe.pvalues[0]:.4g}')
