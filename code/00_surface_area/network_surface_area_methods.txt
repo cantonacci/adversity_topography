@@ -1,0 +1,149 @@
+Functional Network Cortical Surface Area — Methods
+====================================================
+
+Overview
+--------
+We quantified the cortical surface area occupied by each functional network for
+each participant at each timepoint, using subject-specific cortical surface
+geometry and network parcellations derived from resting-state fMRI data.
+
+
+Functional Network Parcellations
+---------------------------------
+Functional network assignments were obtained from the ABCD-BIDS Community
+Collection (ABCC) Template Matching pipeline (ReproTM; Hermosillo et al., 2022),
+using template ABCC-a3-9to16 refined with the Somato-Cognitive-Action Network
+(SCAN) and a minimum network size of 30 vertices. Template Matching assigns each
+cortical vertex and subcortical voxel in a 91,282-greyordinate (91k) CIFTI dense
+label file to one of 15 functional networks, based on similarity to a
+group-derived functional connectivity template. Parcellations were available for
+participants with at least 10 minutes of low-motion resting-state data after
+censoring (approximately 6,000 participants per timepoint across four assessment
+waves: baseline and years 2, 4, and 6). Network labels and corresponding
+abbreviations are listed in Table [X].
+
+
+Cortical Surface Geometry
+--------------------------
+Subject-specific cortical surface geometry was obtained from the XCP-D (v0.13.0)
+post-processing pipeline outputs. For each participant and timepoint, we used the
+HCP-style midthickness surface (the surface midway between the white-matter and
+pial surfaces), in the fsLR 32k surface space (32,492 vertices per hemisphere),
+available as separate left- and right-hemisphere GIfTI files
+(*_hemi-{L,R}_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii). The
+midthickness surface is the standard reference for cortical surface area
+measurement in HCP-style neuroimaging pipelines, as it approximates the
+geometric center of the cortical ribbon and is less sensitive to noise in either
+boundary surface than the pial or white-matter surfaces alone.
+
+
+Per-Vertex Surface Area Computation
+-------------------------------------
+For each hemisphere, per-vertex surface area was computed from the triangulated
+midthickness mesh using the triangle cross-product method. Specifically, for each
+triangular face with vertex coordinates v0, v1, v2, the face area was computed
+as:
+
+    face_area = 0.5 * || (v1 - v0) x (v2 - v0) ||
+
+Each face's area was then distributed equally among its three corner vertices
+(one-third to each), accumulated across all faces sharing a given vertex. This
+equal-weight (one-third) vertex area scheme is the standard method used by the
+HCP Connectome Workbench (wb_command -surface-vertex-areas) and ensures that the
+sum of all per-vertex areas equals the total surface area of the mesh exactly.
+The resulting per-vertex areas are in units of mm².
+
+
+Medial Wall Exclusion
+----------------------
+The medial wall — the non-cortical region of each hemisphere's surface mesh
+corresponding to the corpus callosum and surrounding non-cortical tissue — is
+excluded automatically by the CIFTI greyordinate representation. The 91k CIFTI
+standard includes 29,696 left-cortex and 29,716 right-cortex greyordinates,
+corresponding to the non-medial-wall subset of the 32,492-vertex per-hemisphere
+mesh. Only the vertices indexed by the CIFTI structure were used in area
+calculations; medial wall vertices were never referenced and therefore never
+contributed to any network's area.
+
+
+Network Area Aggregation
+-------------------------
+For each participant, per-vertex surface areas were mapped from the midthickness
+mesh to the CIFTI cortical greyordinates using the vertex-index mapping stored in
+the CIFTI BrainModel header. Network cortical surface area was then computed by
+summing the vertex areas of all left- and right-hemisphere CIFTI greyordinates
+assigned to each network:
+
+    cortical_area(network k) = sum_i [ vertex_area(i) * 1(label(i) == k) ]
+                                for i in {left cortex} union {right cortex}
+
+This produced one cortical surface area value per network per participant, in
+mm². Total cortical surface area across valid subjects averaged approximately
+216,000 mm² (range approximately 164,000–242,000 mm²), consistent with published
+estimates of human neocortical surface area.
+
+
+Network Area Proportions
+-------------------------
+To facilitate comparison across participants and to control for individual
+differences in total cortical surface area, we additionally computed a
+proportion for each network:
+
+    proportion(network k) = cortical_area(network k) /
+                            sum_j [ cortical_area(network j) ]
+
+where the denominator sums over all 15 networks. Proportions sum to exactly 1.0
+for each participant with valid data. Analyses reported in this manuscript use
+the proportion metric.
+
+
+Missing Data
+-------------
+Participants present in the XCP-D dataset but lacking a corresponding Template
+Matching parcellation (due to insufficient low-motion data) were retained in the
+output with NaN values for all network metrics and are excluded from analyses.
+Three participants (one at year 4, two at year 6) had one network with zero
+cortical surface area following the minimum-size filter applied during Template
+Matching; these participants are excluded from analyses involving log-transformed
+area values.
+
+
+Software
+---------
+Surface area calculations were performed in Python 3.12 using NumPy 1.x and
+NiBabel 5.4.0. SLURM-parallelized processing on an HPC cluster
+cluster (16 CPU cores per timepoint) completed in approximately 7–11 minutes per
+assessment wave.
+
+
+Networks
+---------
+The 15 functional networks and their abbreviations:
+
+  DMN   — Default Mode Network
+  VIS   — Visual Network
+  FP    — Frontoparietal Network
+  DAN   — Dorsal Attention Network
+  VAN   — Ventral Attention Network
+  SAL   — Salience Network
+  CO    — Cingulo-Opercular Network (also termed Action-Mode Network, AMN)
+  SMD   — Sensorimotor Dorsal Network
+  SML   — Sensorimotor Lateral Network
+  AUD   — Auditory Network
+  Tpole — Temporal Pole Network
+  MTL   — Medial Temporal Lobe Network
+  PMN   — Parietal Memory Network
+  PON   — Parietal Occipital Network
+  SCAN  — Somato-Cognitive-Action Network
+
+
+References
+-----------
+Hermosillo, R.J.M., et al. (2022). A precision functional atlas of personalized
+  network topography and tunnel vision. Nature Neuroscience, 25, 1569–1581.
+
+Glasser, M.F., et al. (2013). The minimal preprocessing pipelines for the Human
+  Connectome Project. NeuroImage, 80, 105–124.
+
+Ciric, R., et al. (2022). Mitigating head motion artifact in functional
+  connectivity MRI. Nature Protocols, 17, 2033–2064.

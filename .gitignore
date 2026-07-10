@@ -1,0 +1,32 @@
+# ── Restricted data & generated outputs (never committed) ────────────────────
+data/
+outputs/
+logs/
+
+# ── Machine-specific configuration (real paths live here) ────────────────────
+config.local.sh
+
+# ── Python artifacts ─────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# ── Neuroimaging binaries (large; regenerated) ───────────────────────────────
+*.dscalar.nii
+*.dlabel.nii
+*.dtseries.nii
+*.surf.gii
+*.border
+
+# ── Editor / OS cruft ────────────────────────────────────────────────────────
+.DS_Store
+.claude/
+*.swp
+
+# ── Generated intermediates written under code/ (belong in top-level outputs/) ─
+code/outputs/
+code/**/derived/
+
+# ── Manuscript workspace (private; not part of the public repository) ─────────
+manuscript/

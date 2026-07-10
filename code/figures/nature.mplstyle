@@ -1,0 +1,93 @@
+# =============================================================================
+# nature.mplstyle  —  Nature-portfolio–compliant matplotlib stylesheet
+# Load with:  plt.style.use("nature.mplstyle")   (or via figstyle.set_style())
+# Encodes the mechanical rules behind a Nature/Science panel: small sans-serif
+# type, thin lines, outward ticks, no top/right spines, no grid, editable
+# vector text. Do NOT override these per-figure — change them here once.
+# =============================================================================
+
+# ---- Fonts -------------------------------------------------------------------
+# Arial/Helvetica are Nature's required sans-serif faces. The fallback chain
+# keeps figures rendering on machines that lack them.
+font.family:        sans-serif
+font.sans-serif:    Arial, Helvetica, Helvetica Neue, Nimbus Sans, Liberation Sans, DejaVu Sans
+font.size:          7
+mathtext.fontset:   custom
+mathtext.rm:        sans
+mathtext.it:        sans:italic
+mathtext.bf:        sans:bold
+
+# ---- Element type sizes (Nature: 5 pt min, 7 pt max for everything but panel labels)
+axes.titlesize:     7
+axes.labelsize:     7
+xtick.labelsize:    6
+ytick.labelsize:    6
+legend.fontsize:    6
+figure.titlesize:   7
+
+# ---- Axes / spines -----------------------------------------------------------
+axes.linewidth:     0.5
+axes.spines.top:    False
+axes.spines.right:  False
+axes.edgecolor:     000000
+axes.labelcolor:    000000
+axes.titlelocation: left
+axes.titleweight:   bold
+axes.titlepad:      4.0
+axes.labelpad:      2.0
+axes.grid:          False
+axes.axisbelow:     True
+axes.unicode_minus: True
+axes.prop_cycle:    cycler('color', ['0072B2','E69F00','009E73','CC79A7','56B4E9','D55E00','F0E442','000000'])
+
+# ---- Ticks (outward, short, thin — the publication default) ------------------
+xtick.direction:    out
+ytick.direction:    out
+xtick.major.size:   2.5
+ytick.major.size:   2.5
+xtick.minor.size:   1.5
+ytick.minor.size:   1.5
+xtick.major.width:  0.5
+ytick.major.width:  0.5
+xtick.minor.width:  0.4
+ytick.minor.width:  0.4
+xtick.major.pad:    2.0
+ytick.major.pad:    2.0
+xtick.color:        000000
+ytick.color:        000000
+
+# ---- Lines / markers ---------------------------------------------------------
+lines.linewidth:    1.0
+lines.markersize:   3.0
+lines.markeredgewidth: 0.5
+patch.linewidth:    0.5
+hatch.linewidth:    0.5
+errorbar.capsize:   2.0
+
+# ---- Legend (frameless is the house look) ------------------------------------
+legend.frameon:     False
+legend.handlelength: 1.2
+legend.handletextpad: 0.5
+legend.columnspacing: 1.0
+legend.labelspacing: 0.3
+legend.borderaxespad: 0.3
+
+# ---- Figure ------------------------------------------------------------------
+figure.facecolor:   white
+figure.dpi:         150
+figure.constrained_layout.use: True
+figure.constrained_layout.h_pad: 0.03
+figure.constrained_layout.w_pad: 0.03
+
+# ---- Saving: vector first, editable text, RGB, high-res raster fallback ------
+# pdf/ps.fonttype 42 = embed TrueType so text stays EDITABLE in Illustrator
+# (this is the single most important export setting Nature calls out).
+savefig.dpi:        600
+savefig.format:     pdf
+savefig.transparent: True
+savefig.bbox:       standard
+savefig.pad_inches: 0.01
+pdf.fonttype:       42
+ps.fonttype:        42
+svg.fonttype:       none
+pdf.compression:    6
