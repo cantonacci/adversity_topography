@@ -21,7 +21,7 @@ sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'c
 from config import (
     TAB_DIR, DAT_DIR, DATA_DIR,
     NIH_TOOLBOX_FILE, NIH_FLUID_COL, NIH_CRYST_COL, NIH_COLS,
-    CBCL_FILE, CBCL_MEDIATION_OUTCOMES,
+    CBCL_FILE, CBCL_MEDIATION_OUTCOMES, CBCL_SRC_COLUMNS,
     COMPOSITE_COLS,
     NIH_FLUID_Y6_COL, NIH_CRYST_Y6_COL,
 )
@@ -175,25 +175,28 @@ log('=' * 70)
 log('STEP 3 — CBCL outcome scores')
 log('=' * 70)
 
-cbcl_raw = pd.read_csv(CBCL_FILE, low_memory=False)
-log(f'  CBCL loaded: N={len(cbcl_raw)} rows')
-log(f'  CBCL timepoints: {cbcl_raw["timepoint"].unique()}')
+cbcl_raw = pd.read_csv(CBCL_FILE, sep='\t', low_memory=False)
+log(f'  CBCL loaded: N={len(cbcl_raw)} rows (ABCD mh_p_cbcl release)')
+log(f'  CBCL sessions: {sorted(cbcl_raw["session_id"].dropna().unique().tolist())}')
 
-# Timepoint string → session code
-cbcl_tp_map = {
-    'baseline_year_1_arm_1':        '00A',
-    '1_year_follow_up_y_arm_1':     '02A',
-    '2_year_follow_up_y_arm_1':     '04A',
-    '3_year_follow_up_y_arm_1':     '06A',
-}
+# ABCD 6.0 mh_p_cbcl uses BIDS session codes (ses-0XA) and mh_p_cbcl__* summary
+# columns. Rename the raw-sum columns to the canonical cbcl_scr_*_r names, then map
+# session_id DIRECTLY to the imaging-wave code: ses-02A/04A/06A ARE the 2/4/6-year
+# visits (verified mh_p_cbcl_age matches imaging age per wave — 9.96/12.07/14.18/
+# 16.06). Off-year CBCL waves (01A/03A/05A/07A) have no paired imaging and are
+# dropped. This is the correct alignment; the previous timepoint-string map was off
+# by one wave (1_year→02A etc.).
+cbcl_raw = cbcl_raw.rename(columns={'participant_id': 'sub_ID', **CBCL_SRC_COLUMNS})
+
+cbcl_session_map = {'ses-00A': '00A', 'ses-02A': '02A', 'ses-04A': '04A', 'ses-06A': '06A'}
 
 cbcl_avail_cols = [c for c in CBCL_MEDIATION_OUTCOMES if c in cbcl_raw.columns]
 missing_cbcl = [c for c in CBCL_MEDIATION_OUTCOMES if c not in cbcl_raw.columns]
 if missing_cbcl:
-    log(f'  WARNING: CBCL columns not found in file: {missing_cbcl}')
+    log(f'  WARNING: CBCL columns not found after rename: {missing_cbcl}')
 
-cbcl = cbcl_raw[['sub_ID', 'timepoint'] + cbcl_avail_cols].copy()
-cbcl['tp_code'] = cbcl['timepoint'].map(cbcl_tp_map)
+cbcl = cbcl_raw[['sub_ID', 'session_id'] + cbcl_avail_cols].copy()
+cbcl['tp_code'] = cbcl['session_id'].map(cbcl_session_map)
 cbcl = cbcl.dropna(subset=['tp_code'])
 
 for tp, df_ref in tp_df_map.items():

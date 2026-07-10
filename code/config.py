@@ -58,7 +58,7 @@ TOPO_FILES = {
 ATLAS_DIR = DATA_DIR / 'atlas_files'
 ELA_FILE  = DATA_DIR / 'ela'        / '4_ELA_final.xlsx'
 COV_FILE  = DATA_DIR / 'covariates' / '5_covariates_extended.xlsx'
-CBCL_FILE = DATA_DIR / 'cbcl'       / '6_CBCL_allSubscales.csv'
+CBCL_FILE = DATA_DIR / 'cbcl'       / 'mh_p_cbcl.tsv'   # ABCD 6.0 release (through year-6)
 
 # Per-timepoint covariate column names.
 # age_in_months=True → divide by 12 to get years when loading.
@@ -246,6 +246,27 @@ CBCL_MEDIATION_OUTCOMES = {
     'cbcl_scr_dsm5_adhd_r':      'DSM5 ADHD',
     'cbcl_scr_syn_thought_r':    'Thought Problems',
     'cbcl_scr_syn_social_r':     'Social Problems',
+}
+
+# ABCD 6.0 mh_p_cbcl.tsv delivers summary scores under new names and BIDS session
+# codes. Map the raw-sum columns to the canonical cbcl_scr_*_r names used throughout
+# the code so downstream analyses are unchanged. (Verified against mh_p_cbcl.json;
+# *_sum is the raw syndrome/DSM-scale sum, the analogue of the old *_r raw score.)
+CBCL_SRC_COLUMNS = {
+    'mh_p_cbcl_sum':               'cbcl_scr_syn_totprob_r',    # overall Total Problems
+    'mh_p_cbcl__synd__int_sum':    'cbcl_scr_syn_internal_r',
+    'mh_p_cbcl__synd__ext_sum':    'cbcl_scr_syn_external_r',
+    'mh_p_cbcl__synd__anxdep_sum': 'cbcl_scr_syn_anxdep_r',
+    'mh_p_cbcl__synd__wthdep_sum': 'cbcl_scr_syn_withdep_r',
+    'mh_p_cbcl__synd__som_sum':    'cbcl_scr_syn_somatic_r',
+    'mh_p_cbcl__dsm__dep_sum':     'cbcl_scr_dsm5_depress_r',
+    'mh_p_cbcl__synd__aggr_sum':   'cbcl_scr_syn_aggressive_r',
+    'mh_p_cbcl__synd__rule_sum':   'cbcl_scr_syn_rulebreak_r',
+    'mh_p_cbcl__dsm__cond_sum':    'cbcl_scr_dsm5_conduct_r',
+    'mh_p_cbcl__synd__attn_sum':   'cbcl_scr_syn_attention_r',
+    'mh_p_cbcl__dsm__adhd_sum':    'cbcl_scr_dsm5_adhd_r',
+    'mh_p_cbcl__synd__tho_sum':    'cbcl_scr_syn_thought_r',
+    'mh_p_cbcl__synd__soc_sum':    'cbcl_scr_syn_social_r',
 }
 
 # NIH Toolbox: fluid only available at baseline & year-6; crystallized at all TPs.
