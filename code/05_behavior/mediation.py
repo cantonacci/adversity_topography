@@ -49,6 +49,12 @@ from statsmodels.stats.multitest import multipletests
 from joblib import Parallel, delayed
 from pathlib import Path
 
+
+def round_or_nan(x, ndigits):
+    """Round x to ndigits, passing NaN through unchanged (for tidy result rows)."""
+    return np.nan if x is None or np.isnan(x) else round(float(x), ndigits)
+
+
 sys.path.insert(0, str(next(a for a in Path(__file__).resolve().parents if (a/'config.py').exists())))
 from config import (
     FIG_DIR, TAB_DIR, DAT_DIR,
@@ -349,20 +355,20 @@ def run_mediation(data, pred_col, med_col, outcome_col, n_boot=N_BOOTSTRAP):
         'mediator':       med_col,
         'outcome':        outcome_col,
         'n':              n,
-        'beta_a':         round(beta_a, 5) if not np.isnan(beta_a) else np.nan,
-        'se_a':           round(se_a,   5) if not np.isnan(se_a)   else np.nan,
-        'p_a':            round(p_a,    5) if not np.isnan(p_a)    else np.nan,
-        'beta_b':         round(beta_b,    5) if not np.isnan(beta_b)    else np.nan,
-        'se_b':           round(se_b,     5) if not np.isnan(se_b)     else np.nan,
-        'p_b':            round(p_b,      5) if not np.isnan(p_b)      else np.nan,
-        'beta_c':         round(beta_c,   5) if not np.isnan(beta_c)   else np.nan,
-        'p_c':            round(p_c,      5) if not np.isnan(p_c)      else np.nan,
-        'beta_c_prime':   round(beta_c_prime, 5) if not np.isnan(beta_c_prime) else np.nan,
-        'p_c_prime':      round(p_c_prime,   5) if not np.isnan(p_c_prime)    else np.nan,
-        'indirect':       round(indirect, 6) if not np.isnan(indirect) else np.nan,
-        'boot_ci_lo':     round(ci_lo,    6) if not np.isnan(ci_lo)    else np.nan,
-        'boot_ci_hi':     round(ci_hi,    6) if not np.isnan(ci_hi)    else np.nan,
-        'boot_p':         round(boot_p,   5) if not np.isnan(boot_p)   else np.nan,
+        'beta_a':         round_or_nan(beta_a, 5),
+        'se_a':           round_or_nan(se_a,   5),
+        'p_a':            round_or_nan(p_a,    5),
+        'beta_b':         round_or_nan(beta_b, 5),
+        'se_b':           round_or_nan(se_b,   5),
+        'p_b':            round_or_nan(p_b,    5),
+        'beta_c':         round_or_nan(beta_c, 5),
+        'p_c':            round_or_nan(p_c,    5),
+        'beta_c_prime':   round_or_nan(beta_c_prime, 5),
+        'p_c_prime':      round_or_nan(p_c_prime,    5),
+        'indirect':       round_or_nan(indirect, 6),
+        'boot_ci_lo':     round_or_nan(ci_lo,  6),
+        'boot_ci_hi':     round_or_nan(ci_hi,  6),
+        'boot_p':         round_or_nan(boot_p, 5),
         'boot_n_valid':   len(boot_arr),
         'cbcl_base_cov':  is_cbcl and match_base in tmp.columns,
         'cbcl_base_cov_col': match_base if (is_cbcl and match_base in tmp.columns) else '',

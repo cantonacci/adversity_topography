@@ -4,12 +4,13 @@ Analysis A — discovery/replication split-half of the SCAN selectivity headline
 
 Randomly split the baseline sample into two halves, keeping whole families together,
 and independently re-estimate in each half:
-  (1) per-network pseudo-delta-R2 for the 3 ELA composites  -> is SCAN the #1 network in both?
+  (1) per-network incremental ΔR2 for the 3 ELA composites  -> is SCAN the #1 network in both?
   (2) the multivariate threat->SCAN beta                     -> significant in both?
-  (3) the full 15-network threat-beta profile and delta-R2 profile -> cross-half correlation
+  (3) the full 15-network threat-beta profile and ΔR2 profile -> cross-half correlation
 
-Modeling matches phase3_mixed_models.py exactly (crossed RE -> family-only -> OLS fallback;
-pseudo-R2 = 1 - RSS_full/RSS_null). Repeated over N_SPLITS random seeds to show stability.
+Modeling matches multivariate_models.py exactly (OLS with fixed site + family-cluster-
+robust SE; incremental ΔR2 = R2_full - R2_covariates). Repeated over N_SPLITS random
+seeds to show stability.
 
 Outputs:
   outputs/tables/A_splithalf_per_split.csv
@@ -61,9 +62,12 @@ def delta_r2(df, net):
     Xc = np.column_stack([np.ones(len(tmp)), tmp['interview_age'].values, tmp['sex_num'].values, tmp[FD].values, site_d])
     Xf = np.column_stack([np.ones(len(tmp)), tmp['interview_age'].values, tmp['sex_num'].values, tmp[FD].values,
                           tmp[PREDS].values, site_d])
-    rss_null = sm.OLS(y, Xc).fit().ssr
-    rss_full = sm.OLS(y, Xf).fit().ssr
-    return 1.0 - rss_full / rss_null if rss_null > 0 else np.nan
+    # Incremental (semipartial) ΔR² = R²_full − R²_covariates (share of TOTAL
+    # variance uniquely attributable to the 3 ELA composites); matches
+    # multivariate_models.compute_delta_r2.
+    r2_cov  = sm.OLS(y, Xc).fit().rsquared
+    r2_full = sm.OLS(y, Xf).fit().rsquared
+    return r2_full - r2_cov
 
 
 def threat_beta_profile(df):

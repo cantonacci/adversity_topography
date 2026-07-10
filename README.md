@@ -191,7 +191,7 @@ Precise model specifications are given in the manuscript Methods.
 
 - Brieant et al. (2023). *Dev Cogn Neurosci*, 61, 101256.
 - Hermosillo et al. (2024). *Nature Neuroscience*, 27, 1000–1013.
-- Lynch et al. (2024). *Nature*, 633, 671–679.
+- Lynch et al. (2024). *Nature*, 633, 624–633.
 - Volkow et al. (2018). *Dev Cogn Neurosci*, 32, 4–7.
 
 ---

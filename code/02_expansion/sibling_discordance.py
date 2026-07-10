@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from numpy.linalg import LinAlgError
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -72,16 +73,28 @@ log('')
 # ---- PRIMARY: Mundlak between/within ---------------------------------------
 log('PRIMARY — between/within (Mundlak) decomposition  (N = full sample)')
 d[SITE] = d[SITE].astype(str)
+MUNDLAK_FORMULA = 'prop_SCAN ~ threat_fam + threat_dev + age + sex_num + fd'
+res, meth = None, None
+# Only the expected singular-matrix failure (site variance component at its zero
+# boundary) is caught and logged; genuine convergence failure is treated
+# separately, and any other exception propagates so it gets investigated rather
+# than silently swallowed.
 try:
-    res = smf.mixedlm('prop_SCAN ~ threat_fam + threat_dev + age + sex_num + fd',
-                      data=d, groups=d[FAM], vc_formula={'site': f'0 + C({SITE})'}
+    res = smf.mixedlm(MUNDLAK_FORMULA, data=d, groups=d[FAM],
+                      vc_formula={'site': f'0 + C({SITE})'}
                       ).fit(reml=True, method='lbfgs', maxiter=500)
     meth = 'mixedlm_crossed'
-except Exception:
+    if not res.converged:
+        log('  NOTE: crossed site+family RE model did not converge; '
+            'falling back to family-only RE.')
+        res = None
+except LinAlgError as exc:
+    log(f'  NOTE: crossed-RE fit hit an expected singular-matrix error '
+        f'({type(exc).__name__}: {exc}); falling back to family-only RE.')
     res = None
-if res is None or not res.converged:
-    res = smf.mixedlm('prop_SCAN ~ threat_fam + threat_dev + age + sex_num + fd',
-                      data=d, groups=d[FAM]).fit(reml=True, method='lbfgs', maxiter=500)
+if res is None:
+    res = smf.mixedlm(MUNDLAK_FORMULA, data=d, groups=d[FAM]
+                      ).fit(reml=True, method='lbfgs', maxiter=500)
     meth = 'mixedlm_family_only'
 for term in ['threat_dev', 'threat_fam']:
     b, se, p = res.params[term], res.bse[term], res.pvalues[term]
@@ -125,11 +138,12 @@ Xfe = ms[['threat_composite_dm', 'age_dm', 'fd_dm']].values  # no intercept (dem
 yfe = ms['prop_SCAN_dm'].values
 rfe = sm.OLS(yfe, Xfe).fit(cov_type='cluster', cov_kwds={'groups': ms[FAM]})
 # SE note: inference uses the family-cluster-robust (sandwich) SE reported below
-# (rfe.bse), NOT the classical OLS SE. The sandwich variance is a function of the
-# G=n_families cluster score-sums and its small-sample correction scales with G, so
-# it is not sensitive to the residual-df bookkeeping (nobs - k) that the within-
-# demeaning would distort for a *classical* SE. Verified on these data: the reported
-# cluster SE matches an explicit family-dummy + classical-SE fit to ~1 decimal place.
+# (rfe.bse), NOT the classical OLS SE. By the Frisch–Waugh–Lovell theorem the
+# within-demeaned slope equals the family-fixed-effects (LSDV) slope exactly; the
+# demeaning only distorts the *classical* residual-df (nobs - k), which the cluster
+# sandwich (whose small-sample correction scales with the number of families) does
+# not rely on. The demeaned-vs-LSDV equivalence is checked against these data in
+# code/tests/test_sibling_discordance.py.
 log(f'  N obs={len(ms)} from {ms[FAM].nunique()} multi-sib families')
 log(f'  threat (within) beta={rfe.params[0]:+.6f}  se={rfe.bse[0]:.6f}  '
     f'z={rfe.tvalues[0]:+.2f}  p={rfe.pvalues[0]:.4g}')

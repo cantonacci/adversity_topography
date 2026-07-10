@@ -106,7 +106,12 @@ def assoc_matrix(df, pred_cols, networks, fd_col, site_col, family_col, label):
                 continue
             row = tbl.iloc[0]
             r_val, p_val, n = float(row['partial_r']), float(row['p']), meta['n']
+            # Fisher z-transform of the partial r, then a normal-approximation
+            # 95% CI on the z scale that is back-transformed with tanh below.
             z = np.arctanh(np.clip(r_val, -0.9999, 0.9999))
+            # SE of the Fisher z: 1/sqrt(n - 3). The "-3" is the bias/df
+            # correction for a partial correlation (n - 3 - k with k=0 covariates
+            # partialled here, since partial_r already conditions on covariates).
             se_z = 1.0 / np.sqrt(max(n - 3, 1))
 
             r_mat.loc[pred, net] = r_val

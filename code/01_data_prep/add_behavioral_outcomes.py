@@ -154,19 +154,25 @@ for label_key, df in [('baseline', df_base), ('year-2', df_y2),
 # Both are merged into df_base for the ELA(baseline) → SCAN(baseline) → outcome(year-6) path.
 log()
 log('  Adding year-6 NIH fluid and year-6 crystallized to df_base for mediation...')
-nih_y6_fluid = nih[nih['timepoint'] == '06A'][['sub_ID', NIH_FLUID_COL]].copy()
-nih_y6_fluid = nih_y6_fluid.rename(columns={NIH_FLUID_COL: NIH_FLUID_Y6_COL}).dropna(subset=[NIH_FLUID_Y6_COL])
-if NIH_FLUID_Y6_COL in df_base.columns:
-    df_base.drop(columns=[NIH_FLUID_Y6_COL], inplace=True)
-df_base = df_base.merge(nih_y6_fluid, on='sub_ID', how='left', validate='many_to_one')
-log(f'    {NIH_FLUID_Y6_COL} in df_base: N={df_base[NIH_FLUID_Y6_COL].notna().sum()}')
 
-nih_y6_cryst = nih[nih['timepoint'] == '06A'][['sub_ID', NIH_CRYST_COL]].copy()
-nih_y6_cryst = nih_y6_cryst.rename(columns={NIH_CRYST_COL: NIH_CRYST_Y6_COL}).dropna(subset=[NIH_CRYST_Y6_COL])
-if NIH_CRYST_Y6_COL in df_base.columns:
-    df_base.drop(columns=[NIH_CRYST_Y6_COL], inplace=True)
-df_base = df_base.merge(nih_y6_cryst, on='sub_ID', how='left', validate='many_to_one')
-log(f'    {NIH_CRYST_Y6_COL} in df_base: N={df_base[NIH_CRYST_Y6_COL].notna().sum()}')
+
+def merge_year6_outcome(df_base, nih, src_col, dst_col):
+    """Left-merge one year-6 (ses-06A) NIH outcome into df_base as ``dst_col``.
+
+    Selects the 06A rows, renames ``src_col`` -> ``dst_col``, drops NaNs, and
+    drops any pre-existing ``dst_col`` first so the step is safely re-runnable.
+    Returns the new df_base (merge produces a new frame).
+    """
+    y6 = nih[nih['timepoint'] == '06A'][['sub_ID', src_col]].copy()
+    y6 = y6.rename(columns={src_col: dst_col}).dropna(subset=[dst_col])
+    if dst_col in df_base.columns:
+        df_base = df_base.drop(columns=[dst_col])
+    return df_base.merge(y6, on='sub_ID', how='left', validate='many_to_one')
+
+
+for _src, _dst in [(NIH_FLUID_COL, NIH_FLUID_Y6_COL), (NIH_CRYST_COL, NIH_CRYST_Y6_COL)]:
+    df_base = merge_year6_outcome(df_base, nih, _src, _dst)
+    log(f'    {_dst} in df_base: N={df_base[_dst].notna().sum()}')
 tp_df_map['00A'] = df_base  # sync after step-2b reassignment
 
 # ── Step 3: CBCL outcomes ─────────────────────────────────────────────────────

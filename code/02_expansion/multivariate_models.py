@@ -9,7 +9,7 @@ Model per network (crossed random intercepts; OLS fallback):
   prop_net ~ [predictors] + interview_age + sex_num + fd
              + (1|family_id) + (1|study_site)
 
-Delta-R² via pseudo-R² (OLS; full - covariates-only).
+Incremental ΔR² (OLS; R²_full − R²_covariates-only).
 
 Outputs per tag and timepoint:
   TAB_DIR/phase3_{tag}_results_{timepoint}.csv
@@ -95,7 +95,7 @@ def fit_model(df, outcome_col, pred_cols, family_col='family_id'):
     All predictors are entered simultaneously. Returns (results_df, method,
     r2, r2) with columns [predictor, beta, se, t, p]; the 't' column holds the
     cluster-robust z. R² is the model R² (no random effects; the reported
-    variance-explained metric is the separate OLS pseudo-ΔR²).
+    variance-explained metric is the separate OLS incremental ΔR²).
     """
     fd_col   = 'fd'   if 'fd'   in df.columns else 'rest_mean_FD'
     site_col = 'study_site' if 'study_site' in df.columns else 'study_site_baseline'
@@ -112,7 +112,7 @@ def fit_model(df, outcome_col, pred_cols, family_col='family_id'):
     return pd.DataFrame(rows), meta['method'], np.nan, np.nan
 
 
-# ── Delta-R² (OLS pseudo-R²) ─────────────────────────────────────────────────
+# ── Incremental ΔR² (OLS; R²_full − R²_covariates) ───────────────────────────
 
 def compute_delta_r2(df, pred_cols, label):
     fd_col   = 'fd'   if 'fd'   in df.columns else 'rest_mean_FD'
@@ -146,12 +146,13 @@ def compute_delta_r2(df, pred_cols, label):
             tmp[pred_cols].values,
             site_d,
         ])
-        # Pseudo-R² = 1 - RSS_full / RSS_null
-        rss_null = sm.OLS(y, Xc).fit().ssr
-        rss_full = sm.OLS(y, Xf).fit().ssr
+        # Incremental (semipartial) ΔR² = R²_full − R²_covariates: the share of
+        # TOTAL outcome variance uniquely attributable to the ELA predictors.
+        # (Not 1 − RSS_full/RSS_null, which is the partial R² — the reduction in
+        # the covariate model's *residual* variance — a larger, different quantity.)
         r2_cov   = sm.OLS(y, Xc).fit().rsquared
         r2_full  = sm.OLS(y, Xf).fit().rsquared
-        delta_r2 = 1.0 - (rss_full / rss_null) if rss_null > 0 else np.nan
+        delta_r2 = r2_full - r2_cov
 
         rows.append({
             'timepoint':     label,
@@ -160,7 +161,7 @@ def compute_delta_r2(df, pred_cols, label):
             'R2_full':       round(r2_full, 6),
             'delta_R2':      round(delta_r2, 6),
         })
-        log(f'  [{label}] {net}: pseudo-ΔR²={delta_r2:.5f}')
+        log(f'  [{label}] {net}: ΔR²={delta_r2:.5f}')
     return pd.DataFrame(rows)
 
 
@@ -375,7 +376,7 @@ for analysis in ANALYSES:
             dr = dr2_combined[dr2_combined['timepoint'] == tp_l]
             ax.bar(dr['network'], dr['delta_R2'] * 100, color='steelblue', edgecolor='black', lw=0.5)
             ax.set_title(tp_l.replace('year', 'Year-'), fontsize=11)
-            ax.set_ylabel('Pseudo-ΔR² × 100 (%)', fontsize=9)
+            ax.set_ylabel('ΔR² × 100 (%)', fontsize=9)
             ax.tick_params(axis='x', rotation=45)
         plt.suptitle(f'ELA [{tag}] — Unique Variance in Network Proportion', fontsize=11)
         plt.tight_layout()

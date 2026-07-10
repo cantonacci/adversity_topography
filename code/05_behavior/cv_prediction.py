@@ -24,6 +24,9 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import GroupKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import r2_score
 from scipy import stats
 from pathlib import Path
 
@@ -47,12 +50,12 @@ log(f'N = {len(d)} children with complete y6-cognition + baseline-SCAN + covaria
     f'{d[FAM].nunique()} families')
 log('')
 
-# design matrices ------------------------------------------------------------
+# design matrices (RAW features; ALL standardization happens inside each CV
+# fold — see cv_r2 — so no test-fold statistics leak into feature scaling) -----
 site_d = pd.get_dummies(d[SITE6].astype(str), prefix='site', drop_first=True, dtype=float)
-def z(s): return (s - s.mean())/s.std(ddof=0)
-COV = np.column_stack([z(d[AGE6]).values, d[SEX].values, z(d[FD6]).values, site_d.values])
-scan = z(d[SCANCOL]).values.reshape(-1,1)
-thr  = z(d[THREAT]).values.reshape(-1,1)
+COV  = np.column_stack([d[AGE6].values, d[SEX].values, d[FD6].values, site_d.values])
+scan = d[SCANCOL].values.reshape(-1,1)
+thr  = d[THREAT].values.reshape(-1,1)
 y    = d[OUTCOME].values
 groups = d[FAM].values
 
@@ -64,7 +67,14 @@ FEATS = {
 }
 
 def cv_r2(X, y, groups, seed):
-    """Pooled out-of-fold R2 and Pearson r for one GroupKFold split."""
+    """Pooled out-of-fold R2 and Pearson r for one GroupKFold split.
+
+    Standardization is fit on the TRAINING fold only (StandardScaler inside a
+    Pipeline) and applied to the held-out fold, so no test-fold information
+    leaks into feature scaling. For unregularized OLS this is numerically
+    identical to scaling globally — linear models are invariant to affine
+    feature rescaling — but it is leakage-free by construction.
+    """
     oof = np.full(len(y), np.nan)
     gkf = GroupKFold(n_splits=N_FOLDS)
     # GroupKFold is deterministic; shuffle groups to vary splits by seed
@@ -73,10 +83,9 @@ def cv_r2(X, y, groups, seed):
     remap = {g:i for i,g in enumerate(rng.permutation(uniq))}
     gshuf = np.array([remap[g] for g in groups])
     for tr, te in gkf.split(X, y, gshuf):
-        m = LinearRegression().fit(X[tr], y[tr])
+        m = make_pipeline(StandardScaler(), LinearRegression()).fit(X[tr], y[tr])
         oof[te] = m.predict(X[te])
-    ss_res = np.sum((y - oof)**2); ss_tot = np.sum((y - y.mean())**2)
-    return 1 - ss_res/ss_tot, stats.pearsonr(y, oof)[0]
+    return r2_score(y, oof), stats.pearsonr(y, oof)[0]
 
 # observed CV performance ----------------------------------------------------
 log('Cross-validated performance (10-fold GroupKFold, mean +/- SD over 20 repeats):')

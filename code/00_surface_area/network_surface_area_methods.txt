@@ -11,7 +11,7 @@ geometry and network parcellations derived from resting-state fMRI data.
 Functional Network Parcellations
 ---------------------------------
 Functional network assignments were obtained from the ABCD-BIDS Community
-Collection (ABCC) Template Matching pipeline (ReproTM; Hermosillo et al., 2022),
+Collection (ABCC) Template Matching pipeline (ReproTM; Hermosillo et al., 2024),
 using template ABCC-a3-9to16 refined with the Somato-Cognitive-Action Network
 (SCAN) and a minimum network size of 30 vertices. Template Matching assigns each
 cortical vertex and subcortical voxel in a 91,282-greyordinate (91k) CIFTI dense
@@ -139,11 +139,11 @@ The 15 functional networks and their abbreviations:
 
 References
 -----------
-Hermosillo, R.J.M., et al. (2022). A precision functional atlas of personalized
-  network topography and tunnel vision. Nature Neuroscience, 25, 1569–1581.
+Hermosillo, R.J.M., et al. (2024). A precision functional atlas of personalized
+  network topography and probabilities. Nature Neuroscience, 27, 1000–1013.
 
 Glasser, M.F., et al. (2013). The minimal preprocessing pipelines for the Human
   Connectome Project. NeuroImage, 80, 105–124.
 
-Ciric, R., et al. (2022). Mitigating head motion artifact in functional
-  connectivity MRI. Nature Protocols, 17, 2033–2064.
+Ciric, R., et al. (2018). Mitigating head motion artifact in functional
+  connectivity MRI. Nature Protocols, 13, 2801–2826.

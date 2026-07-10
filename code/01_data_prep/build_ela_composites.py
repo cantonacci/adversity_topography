@@ -95,6 +95,17 @@ def log(msg=''):
     print(msg, flush=True)
 
 
+def make_composite(X_df, factor_cols):
+    """Composite = mean of the z-scored constituent factors, re-standardized.
+
+    Pure function of its inputs (takes the z-scored factor frame explicitly
+    rather than closing over a module/enclosing-scope variable), so it is
+    unit-testable in isolation.
+    """
+    raw = X_df[factor_cols].mean(axis=1)
+    return (raw - raw.mean()) / raw.std()
+
+
 def main():
     log('=' * 70)
     log('PHASE 0 — A Priori ELA Composite Construction')
@@ -120,13 +131,9 @@ def main():
     X_df = pd.DataFrame(X, columns=ELA_COLS, index=ela_rec.index)
 
     # ── 4. Build composites ───────────────────────────────────────────────────
-    def make_composite(factor_cols):
-        raw = X_df[factor_cols].mean(axis=1)
-        return (raw - raw.mean()) / raw.std()
-
-    threat_z  = make_composite(ELA_THREAT_COLS)
-    depriv_z  = make_composite(ELA_DEPRIVATION_COLS)
-    unpred_z  = make_composite(ELA_UNPRED_COLS)
+    threat_z  = make_composite(X_df, ELA_THREAT_COLS)
+    depriv_z  = make_composite(X_df, ELA_DEPRIVATION_COLS)
+    unpred_z  = make_composite(X_df, ELA_UNPRED_COLS)
 
     log('\nComposite descriptive stats (should be mean≈0, std≈1):')
     for name, s in [('threat_composite', threat_z),
