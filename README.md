@@ -38,10 +38,18 @@ larger SCAN carries a measurable cost to crystallized cognition.
 ```
 adversity_topography/
 ├── run_all.sh                # master pipeline driver
+├── Makefile                  # idempotent stage targets (alternative to run_all.sh)
+├── pyproject.toml            # metadata for the installable `adtopo` package (pip install -e .)
 ├── requirements.txt          # pinned Python environment (pip freeze)
 ├── config.local.example.sh   # template for machine-specific paths (copy to config.local.sh)
+├── adtopo/                           # importable support package (pip install -e .)
+│   ├── config.py                     # paths, network list, ELA composites, FDR counts (import: from adtopo.config import cfg)
+│   ├── re_models.py                  # shared RE / OLS-cluster model fitting (ModelFitter, spec-invariance)
+│   ├── fc_utils.py                   # shared functional-connectivity I/O + matrix helpers
+│   ├── bayes_factors.py              # BIC-based Bayes-factor helpers
+│   ├── stats_utils.py                # shared stats helpers (bias-corrected Cramér's V, …)
+│   └── logging_utils.py              # stdlib logging → timestamped log files
 ├── code/
-│   ├── config.py                     # paths, network list, ELA composites, FDR counts
 │   ├── 00_surface_area/              # topography → per-network cortical-area CSVs
 │   │   └── compute_network_areas.py      # network areas from parcellations + surfaces (needs derivatives)
 │   ├── 01_data_prep/                 # build the analysis dataframes
@@ -80,7 +88,8 @@ adversity_topography/
 │   ├── tables/                       # Table 1 / participant characteristics
 │   ├── figures/                      # Figure 1–4 panels + surface/CIFTI generators
 │   │                                 #   figstyle.py + nature.mplstyle = house style; figsrc.py = project style
-│   └── supplement/                   # Bayes factors, RE-specification robustness, etc.
+│   ├── supplement/                   # Bayes factors, RE-specification robustness, etc.
+│   └── tests/                        # pytest unit tests (data-prep accuracy/idempotency, model helpers)
 │
 │   # ── git-ignored (local only; NOT in the public repository) ────────────────
 ├── data/                             # ABCD-restricted inputs (see "External data")
@@ -90,8 +99,9 @@ adversity_topography/
 ```
 
 Everything below the marker above is git-ignored: cloning the repository yields
-only `code/`, `run_all.sh`, `config.local.example.sh`, `requirements.txt`,
-`LICENSE`, and this README. Restricted ABCD data and the manuscript are not distributed.
+only `adtopo/`, `code/`, `run_all.sh`, `Makefile`, `pyproject.toml`,
+`config.local.example.sh`, `requirements.txt`, `LICENSE`, and this README.
+Restricted ABCD data and the manuscript are not distributed.
 
 Output CSV filenames retain their original `phase*`/analysis-letter stems
 (e.g. `phase2_composites_r_matrix_baseline.csv`, `fc_lme_threat_baseline.csv`) —
@@ -107,7 +117,9 @@ Python 3.12; exact package versions are pinned in `requirements.txt`
 nibabel 5.4.0, neuromaps 0.0.7, …):
 
 ```bash
-python -m venv env && source env/bin/activate && pip install -r requirements.txt
+python -m venv env && source env/bin/activate
+pip install -r requirements.txt
+pip install -e .            # installs the local `adtopo` support package (from pyproject.toml)
 ```
 
 Machine-specific settings — the Python interpreter, any module loads, and the
@@ -118,8 +130,10 @@ cp config.local.example.sh config.local.sh   # then edit for your machine
 ```
 
 `config.local.sh` is git-ignored and is read by both the launchers (`run_all.sh`,
-`code/**/*.sbatch`) and `code/config.py`. All scripts locate `config.py` by
-walking up to the `code/` root, so they run correctly from any working directory.
+`code/**/*.sbatch`) and `adtopo/config.py`. Analysis scripts import their
+configuration from the installed `adtopo` package (`from adtopo.config import cfg`),
+so they run correctly from any working directory once the package is installed
+(`pip install -e .`, above).
 
 ---
 
