@@ -22,9 +22,7 @@ from scipy.stats import pearsonr
 import statsmodels.api as sm
 
 import figsrc as F
-from adtopo.config import (ELA_THREAT_COLS, ELA_DEPRIVATION_COLS, ELA_UNPRED_COLS,
-                    ELA_LABELS_SHORT, COMPOSITE_COLS, COMPOSITE_LABELS,
-                    BONFERRONI_ALPHA)
+from adtopo.config import cfg
 
 fs = F.fs
 fs.set_style()
@@ -55,7 +53,7 @@ def panel_matrix():
     col_order = sa.sort_values("meanG1")["network"].tolist()
 
     # rows grouped by composite domain (threat, deprivation, unpredictability)
-    row_order = ELA_THREAT_COLS + ELA_DEPRIVATION_COLS + ELA_UNPRED_COLS
+    row_order = cfg.ELA_THREAT_COLS + cfg.ELA_DEPRIVATION_COLS + cfg.ELA_UNPRED_COLS
     r = r.loc[row_order, col_order]
     q = q.loc[row_order, col_order]
     p = p.loc[row_order, col_order]
@@ -69,7 +67,7 @@ def panel_matrix():
     ax.set_xticks(range(len(col_order)))
     ax.set_xticklabels(col_order, rotation=45, ha="right")
     ax.set_yticks(range(len(row_order)))
-    ax.set_yticklabels([ELA_LABELS_SHORT[c] for c in row_order])
+    ax.set_yticklabels([cfg.ELA_LABELS_SHORT[c] for c in row_order])
     ax.tick_params(length=0)
     for s in ax.spines.values():
         s.set_visible(False)
@@ -87,8 +85,8 @@ def panel_matrix():
                         fontsize=5)
 
     # horizontal separators between composite domains
-    for boundary in (len(ELA_THREAT_COLS) - 0.5,
-                     len(ELA_THREAT_COLS) + len(ELA_DEPRIVATION_COLS) - 0.5):
+    for boundary in (len(cfg.ELA_THREAT_COLS) - 0.5,
+                     len(cfg.ELA_THREAT_COLS) + len(cfg.ELA_DEPRIVATION_COLS) - 0.5):
         ax.axhline(boundary, color="white", lw=1.2)
 
     # box the SCAN column
@@ -161,7 +159,7 @@ def panel_scatters():
     # ELA-dimension colour bars used across the figures)
     ELA_COLORS = ["#D55E00", "#0072B2", "#009E73"]
     fig, axes = fs.grid(120, 44, nrows=1, ncols=3, sharey=True)
-    for k, (comp, ax) in enumerate(zip(COMPOSITE_COLS, axes)):
+    for k, (comp, ax) in enumerate(zip(cfg.COMPOSITE_COLS, axes)):
         col = ELA_COLORS[k]
         sub = df[[comp, "prop_SCAN"]].dropna()
         x = sub[comp].values
@@ -202,7 +200,7 @@ def panel_scatters():
                 va="top", ha="left", fontsize=6.5, fontweight="bold")
         ax.text(0.04, 0.86, ptxt, transform=ax.transAxes,
                 va="top", ha="left", fontsize=5.5)
-        ax.set_xlabel(f"{COMPOSITE_LABELS[comp]} (z)")
+        ax.set_xlabel(f"{cfg.COMPOSITE_LABELS[comp]} (z)")
         ax.set_xlim(-2.5, 4)
         ax.set_ylim(1.5, 4.0)
         if k == 0:

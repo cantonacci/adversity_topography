@@ -32,7 +32,7 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-from adtopo.config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR, XCP_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('compute_encroachment')
 
@@ -42,13 +42,13 @@ N_CORT        = 59412   # cortical grayordinates in 91k CIFTI (L: 0-29696, R: 29
 N_JOBS        = min(16, cpu_count())
 MEDIAL_THRESH = 20.0    # mm; |x| < threshold → medial zone (cingulate axis)
 
-ATLAS_PATH  = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+ATLAS_PATH  = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 OUT_DIR     = Path(__file__).parent.parent / 'outputs' / 'encroachment'
 
 # fsLR-32k midthickness surfaces for vertex x-coordinates (zone split).
 # Any subject's fsLR-32k surface works; all are registered to the same template.
-SURF_L = XCP_DIR / 'sub-UM9EFLC3/ses-00A/anat/sub-UM9EFLC3_ses-00A_run-01_hemi-L_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
-SURF_R = XCP_DIR / 'sub-UM9EFLC3/ses-00A/anat/sub-UM9EFLC3_ses-00A_run-01_hemi-R_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
+SURF_L = cfg.XCP_DIR / 'sub-UM9EFLC3/ses-00A/anat/sub-UM9EFLC3_ses-00A_run-01_hemi-L_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
+SURF_R = cfg.XCP_DIR / 'sub-UM9EFLC3/ses-00A/anat/sub-UM9EFLC3_ses-00A_run-01_hemi-R_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
 
 BOLDMAP_GLOB = (
     '*_task-rest_space-fsLR_den-91k_desc-denoised-spatially-interpolated-'
@@ -61,7 +61,7 @@ NET_MAP = {
     'SAL': 8, 'CO':  9, 'SMD': 10, 'SML': 11, 'AUD': 12,
     'Tpole': 13, 'MTL': 14, 'PMN': 15, 'PON': 16, 'SCAN': 18,
 }
-TARGET_NETS = [n for n in NETWORKS if n != 'SCAN']   # 14 networks
+TARGET_NETS = [n for n in cfg.NETWORKS if n != 'SCAN']   # 14 networks
 
 TP_MAP = {
     '00A': ('df_base.csv', 'baseline'),
@@ -94,7 +94,7 @@ def _init_worker(template_cort, template_counts, template_counts_med,
 
 
 def find_boldmap(sub_id, session):
-    hits = glob.glob(str(REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
+    hits = glob.glob(str(cfg.REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
     return hits[0] if hits else None
 
 
@@ -151,7 +151,7 @@ def run_timepoint(session, df_file, tp_label):
     log(f'Timepoint: {tp_label} (ses-{session})')
     log(f'{"="*60}')
 
-    df_path = DAT_DIR / df_file
+    df_path = cfg.DAT_DIR / df_file
     if not df_path.exists():
         log(f'  WARNING: {df_file} not found — skipping'); return
 

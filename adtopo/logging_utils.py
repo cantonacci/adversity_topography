@@ -10,9 +10,9 @@ import logging
 import sys
 from datetime import datetime
 
-from adtopo.config import OUT_DIR
+from adtopo.config import cfg
 
-_LOG_DIR = OUT_DIR / 'logs'
+_LOG_DIR = cfg.OUT_DIR / 'logs'
 
 
 def get_logger(name, to_file=True):

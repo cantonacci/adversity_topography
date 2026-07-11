@@ -52,23 +52,28 @@ def dlabel_scan_mask(path, nvert=NVERT):
                            full['CIFTI_STRUCTURE_CORTEX_RIGHT']])
 
 
-grad = fetch_annotation(source='margulies2016', desc='fcgradient01', space='fsLR', den='32k')
-gL, gR = grad
-g_full = np.concatenate([nib.load(str(gL)).darrays[0].data,
-                         nib.load(str(gR)).darrays[0].data]).astype(float)
-d_full = cifti_to_full(nib.load(str(DIFF)))
-g_full[g_full == 0] = np.nan
-valid = np.isfinite(g_full) & np.isfinite(d_full)
+def main():
+    grad = fetch_annotation(source='margulies2016', desc='fcgradient01', space='fsLR', den='32k')
+    gL, gR = grad
+    g_full = np.concatenate([nib.load(str(gL)).darrays[0].data,
+                             nib.load(str(gR)).darrays[0].data]).astype(float)
+    d_full = cifti_to_full(nib.load(str(DIFF)))
+    g_full[g_full == 0] = np.nan
+    valid = np.isfinite(g_full) & np.isfinite(d_full)
 
-gv, dv = g_full[valid], d_full[valid]
-g1_z = (gv - gv.mean()) / gv.std()
-g_pct = stats.rankdata(gv) / len(gv) * 100
-hot = dv >= np.percentile(dv, 90)
-scan_terr = dlabel_scan_mask(DLAB)[valid]
+    gv, dv = g_full[valid], d_full[valid]
+    g1_z = (gv - gv.mean()) / gv.std()
+    g_pct = stats.rankdata(gv) / len(gv) * 100
+    hot = dv >= np.percentile(dv, 90)
+    scan_terr = dlabel_scan_mask(DLAB)[valid]
 
-df = pd.DataFrame({'g1': gv, 'g1_z': g1_z, 'diff': dv, 'gradient_pct': g_pct,
-                   'is_hotspot': hot, 'is_scan_territory': scan_terr})
-OUT.parent.mkdir(parents=True, exist_ok=True)
-df.to_csv(OUT, index=False)
-print(f'wrote {OUT}  (n_valid={len(df)}, n_hotspot={int(hot.sum())}, '
+    df = pd.DataFrame({'g1': gv, 'g1_z': g1_z, 'diff': dv, 'gradient_pct': g_pct,
+                       'is_hotspot': hot, 'is_scan_territory': scan_terr})
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(OUT, index=False)
+    print(f'wrote {OUT}  (n_valid={len(df)}, n_hotspot={int(hot.sum())}, '
       f'hotspot mean G1z={g1_z[hot].mean():+.3f}, hotspot mean pct={g_pct[hot].mean():.1f})')
+
+
+if __name__ == '__main__':
+    main()

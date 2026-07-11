@@ -25,17 +25,17 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 
-from adtopo.config import DAT_DIR, ATLAS_DIR, FC_DTSERIES_DIR, OUT_DIR, TAB_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('seed_fc')
 
 FD_THRESH, MIN_FRAMES, N_CORT, N_FULL = 0.2, 375, 59412, 91282
 SCAN_LABEL, HIGH, LOW = 18, 1.0, -1.0
 N_JOBS = min(16, cpu_count())
-FC_DIR = FC_DTSERIES_DIR
-ATLAS  = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
-OUT_C  = OUT_DIR / 'cifti_for_workbench'   # repo outputs/ (was code/outputs/ — stray path)
-OUT_T  = TAB_DIR                            # repo outputs/tables
+FC_DIR = cfg.FC_DTSERIES_DIR
+ATLAS  = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+OUT_C  = cfg.OUT_DIR / 'cifti_for_workbench'   # repo outputs/ (was code/outputs/ — stray path)
+OUT_T  = cfg.TAB_DIR                            # repo outputs/tables
 DTGLOB = '*_task-rest_space-fsLR_den-91k_desc-denoisedSmoothed_bold.dtseries.nii'
 MOGLOB = '*_task-rest_motion.tsv'
 
@@ -91,7 +91,7 @@ def seed_fc_map(args):
 
 
 def main():
-    df = pd.read_csv(DAT_DIR / 'df_base.csv')[['sub_ID', 'threat_composite']].dropna()
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')[['sub_ID', 'threat_composite']].dropna()
     hi = df[df['threat_composite'] >= HIGH]['sub_ID'].tolist()
     lo = df[df['threat_composite'] <= LOW]['sub_ID'].tolist()
     log(f'SCAN-seed FC | seed vertices={len(SEED_IDX)} | high={len(hi)} low={len(lo)} | workers={N_JOBS}')

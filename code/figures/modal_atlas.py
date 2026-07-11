@@ -33,7 +33,7 @@ from nibabel.cifti2 import cifti2_axes
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-from adtopo.config import ATLAS_DIR, REPRO_DIR, DAT_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('modal_atlas')
 
@@ -41,9 +41,9 @@ _log = get_logger('modal_atlas')
 TIMEPOINT = 'baseline'
 N_JOBS    = min(16, cpu_count())
 
-PROC_DIR  = DAT_DIR
-OUT_DIR   = DAT_DIR.parent / 'cifti_for_workbench'
-ATLAS_PATH = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+PROC_DIR  = cfg.DAT_DIR
+OUT_DIR   = cfg.DAT_DIR.parent / 'cifti_for_workbench'
+ATLAS_PATH = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 
 SESSION_MAP = {'baseline': '00A', 'year2': '02A', 'year4': '04A', 'year6': '06A'}
 DF_MAP      = {'baseline': 'df_base.csv', 'year2': 'df_year2.csv',
@@ -91,7 +91,7 @@ def load_atlas_bm():
 
 
 def find_boldmap(sub_id, session):
-    hits = glob.glob(str(REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
+    hits = glob.glob(str(cfg.REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
     return hits[0] if hits else None
 
 

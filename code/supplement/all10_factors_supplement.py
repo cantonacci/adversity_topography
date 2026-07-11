@@ -18,10 +18,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from adtopo.config import TAB_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
+from adtopo.config import cfg
 
-src = TAB_DIR / 'phase3_individual_results_baseline.csv'
-res = pd.read_csv(src)
 
 # β matrix with significance star (q_FDR < .05), predictors × networks
 def cell(row):
@@ -29,22 +27,31 @@ def cell(row):
     star = '*' if (pd.notna(row['q_FDR']) and row['q_FDR'] < 0.05) else ''
     return f'{b:.5f}{star}'
 
-res['cell'] = res.apply(cell, axis=1)
-mat = res.pivot(index='predictor', columns='network', values='cell')
-mat = mat.reindex(index=[c for c in ELA_COLS if c in mat.index],
-                  columns=[n for n in NETWORKS if n in mat.columns])
-mat.index = [ELA_LABELS_SHORT.get(i, i) for i in mat.index]
-mat.to_csv(TAB_DIR / 'supp_all10factors_beta_matrix_baseline.csv')
 
-# SCAN column, full stats
-scan = res[res['network'] == 'SCAN'][['predictor', 'beta', 'se', 't', 'p', 'q_FDR']].copy()
-scan['label'] = scan['predictor'].map(lambda p: ELA_LABELS_SHORT.get(p, p))
-scan = scan.sort_values('p')
-scan.to_csv(TAB_DIR / 'supp_all10factors_SCAN_baseline.csv', index=False)
+def main():
+    src = cfg.TAB_DIR / 'phase3_individual_results_baseline.csv'
+    res = pd.read_csv(src)
 
-n_sig_scan = int((scan['q_FDR'] < 0.05).sum())
-print(f'Loaded {src.name} ({len(res)} rows).')
-print(f'All-10-factor model, SCAN column (sorted by p), baseline:')
-print(scan[['label', 'beta', 'p', 'q_FDR']].to_string(index=False))
-print(f'\nSCAN: {n_sig_scan}/{len(scan)} individual factors FDR-significant.')
-print('Saved: supp_all10factors_beta_matrix_baseline.csv, supp_all10factors_SCAN_baseline.csv')
+    res['cell'] = res.apply(cell, axis=1)
+    mat = res.pivot(index='predictor', columns='network', values='cell')
+    mat = mat.reindex(index=[c for c in cfg.ELA_COLS if c in mat.index],
+                      columns=[n for n in cfg.NETWORKS if n in mat.columns])
+    mat.index = [cfg.ELA_LABELS_SHORT.get(i, i) for i in mat.index]
+    mat.to_csv(cfg.TAB_DIR / 'supp_all10factors_beta_matrix_baseline.csv')
+
+    # SCAN column, full stats
+    scan = res[res['network'] == 'SCAN'][['predictor', 'beta', 'se', 't', 'p', 'q_FDR']].copy()
+    scan['label'] = scan['predictor'].map(lambda p: cfg.ELA_LABELS_SHORT.get(p, p))
+    scan = scan.sort_values('p')
+    scan.to_csv(cfg.TAB_DIR / 'supp_all10factors_SCAN_baseline.csv', index=False)
+
+    n_sig_scan = int((scan['q_FDR'] < 0.05).sum())
+    print(f'Loaded {src.name} ({len(res)} rows).')
+    print(f'All-10-factor model, SCAN column (sorted by p), baseline:')
+    print(scan[['label', 'beta', 'p', 'q_FDR']].to_string(index=False))
+    print(f'\nSCAN: {n_sig_scan}/{len(scan)} individual factors FDR-significant.')
+    print('Saved: supp_all10factors_beta_matrix_baseline.csv, supp_all10factors_SCAN_baseline.csv')
+
+
+if __name__ == '__main__':
+    main()

@@ -20,7 +20,7 @@ import shutil
 import pandas as pd
 from pathlib import Path
 
-from adtopo.config import DAT_DIR, AB_G_DYN_FILE
+from adtopo.config import cfg
 
 
 def load_y2_true_age(ab_g_dyn_file):
@@ -49,14 +49,14 @@ def correct_y2_age(df_y2, y2age):
 
 
 def main():
-    y2_path  = DAT_DIR / 'df_y2.csv'
-    bak_path = DAT_DIR / 'df_y2.csv.bak_preY2agefix'
+    y2_path  = cfg.DAT_DIR / 'df_y2.csv'
+    bak_path = cfg.DAT_DIR / 'df_y2.csv.bak_preY2agefix'
 
     print('=' * 64)
     print('fix_y2_age.py — correcting df_y2 interview_age')
     print('=' * 64)
 
-    y2age = load_y2_true_age(AB_G_DYN_FILE)
+    y2age = load_y2_true_age(cfg.AB_G_DYN_FILE)
     print(f'ses-02A ages available: {len(y2age)}  '
           f'(mean={y2age["age_y2_true"].mean():.2f} years)')
 

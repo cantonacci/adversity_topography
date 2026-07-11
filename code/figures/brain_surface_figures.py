@@ -27,7 +27,7 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap, BoundaryN
 from nilearn import plotting
 from pathlib import Path
 
-from adtopo.config import TAB_DIR, FIG_DIR, ATLAS_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('brain_surface_figures')
 
@@ -40,9 +40,9 @@ mpl.rcParams.update({
 })
 
 # ── Directories ────────────────────────────────────────────────────────────────
-OUT_DIR    = FIG_DIR / 'brain_surface' / 'old_style'
-PARCEL_DIR = FIG_DIR / 'brain_surface'
-SURF_DIR   = FIG_DIR / 'brain_surface' / 'inflated_surfaces'
+OUT_DIR    = cfg.FIG_DIR / 'brain_surface' / 'old_style'
+PARCEL_DIR = cfg.FIG_DIR / 'brain_surface'
+SURF_DIR   = cfg.FIG_DIR / 'brain_surface' / 'inflated_surfaces'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 PARCEL_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -110,7 +110,7 @@ _BG_R = _load_smooth_bg(CURV_R) if CURV_R.exists() else None
 # ── Atlas loading ──────────────────────────────────────────────────────────────
 
 def load_atlas():
-    atlas_path = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+    atlas_path = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
     log(f'Loading atlas: {atlas_path.name}')
     img   = nib.load(str(atlas_path))
     data  = img.get_fdata()[0]
@@ -291,8 +291,8 @@ def main():
 
     # ── Load phase3 data ──────────────────────────────────────────────────────
     log('\nLoading phase3 tables...')
-    bsi_path = TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
-    dr2_path = TAB_DIR / 'phase3_individual_delta_r2_baseline.csv'
+    bsi_path = cfg.TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
+    dr2_path = cfg.TAB_DIR / 'phase3_individual_delta_r2_baseline.csv'
     if not bsi_path.exists():
         log(f'ERROR: {bsi_path} not found'); return
 

@@ -33,12 +33,7 @@ import matplotlib.colors as mcolors
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 
-from adtopo.config import (
-    BASE_DIR, DAT_DIR, FIG_DIR, TAB_DIR,
-    ELA_COLS, ELA_LABELS_SHORT, ELA_REVERSE_CODED,
-    ELA_THREAT_COLS, ELA_DEPRIVATION_COLS, ELA_UNPRED_COLS,
-    COMPOSITE_COLS, COMPOSITE_LABELS,
-)
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('build_ela_composites')
 
@@ -70,9 +65,9 @@ DOMAIN_COLORS = {
 }
 
 DOMAIN_MAP = (
-    [(c, 'Threat')           for c in ELA_THREAT_COLS] +
-    [(c, 'Deprivation')      for c in ELA_DEPRIVATION_COLS] +
-    [(c, 'Unpredictability') for c in ELA_UNPRED_COLS]
+    [(c, 'Threat')           for c in cfg.ELA_THREAT_COLS] +
+    [(c, 'Deprivation')      for c in cfg.ELA_DEPRIVATION_COLS] +
+    [(c, 'Unpredictability') for c in cfg.ELA_UNPRED_COLS]
 )
 FACTOR_DOMAIN = dict(DOMAIN_MAP)
 
@@ -112,28 +107,28 @@ def main():
     log('=' * 70)
 
     # ── 1. Load baseline data ─────────────────────────────────────────────────
-    df = pd.read_csv(DAT_DIR / 'df_base.csv')
-    ela_raw = df[['sub_ID'] + ELA_COLS].copy()
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    ela_raw = df[['sub_ID'] + cfg.ELA_COLS].copy()
     N_before = len(ela_raw)
-    ela_raw = ela_raw.dropna(subset=ELA_COLS)
+    ela_raw = ela_raw.dropna(subset=cfg.ELA_COLS)
     N = len(ela_raw)
     log(f'\nN subjects with complete ELA: {N}  (dropped {N_before - N} with any NaN)')
 
     # ── 2. Negate reverse-coded factors (high = more adversity after negation) ─
     ela_rec = ela_raw.copy()
-    for col in ELA_REVERSE_CODED:
+    for col in cfg.ELA_REVERSE_CODED:
         ela_rec[col] = -ela_rec[col]
-    log(f'Negated: {ELA_REVERSE_CODED}')
+    log(f'Negated: {cfg.ELA_REVERSE_CODED}')
 
     # ── 3. Z-score all 10 factors ─────────────────────────────────────────────
     scaler = StandardScaler()
-    X = scaler.fit_transform(ela_rec[ELA_COLS].values)
-    X_df = pd.DataFrame(X, columns=ELA_COLS, index=ela_rec.index)
+    X = scaler.fit_transform(ela_rec[cfg.ELA_COLS].values)
+    X_df = pd.DataFrame(X, columns=cfg.ELA_COLS, index=ela_rec.index)
 
     # ── 4. Build composites ───────────────────────────────────────────────────
-    threat_z  = make_composite(X_df, ELA_THREAT_COLS)
-    depriv_z  = make_composite(X_df, ELA_DEPRIVATION_COLS)
-    unpred_z  = make_composite(X_df, ELA_UNPRED_COLS)
+    threat_z  = make_composite(X_df, cfg.ELA_THREAT_COLS)
+    depriv_z  = make_composite(X_df, cfg.ELA_DEPRIVATION_COLS)
+    unpred_z  = make_composite(X_df, cfg.ELA_UNPRED_COLS)
 
     log('\nComposite descriptive stats (should be mean≈0, std≈1):')
     for name, s in [('threat_composite', threat_z),
@@ -153,7 +148,7 @@ def main():
     log(comp_df.corr().round(3).to_string())
 
     # ── 6. Save output CSV ────────────────────────────────────────────────────
-    TAB_DIR.mkdir(parents=True, exist_ok=True)
+    cfg.TAB_DIR.mkdir(parents=True, exist_ok=True)
 
     out = ela_raw[['sub_ID']].copy()
     out = out.join(comp_df)
@@ -161,13 +156,13 @@ def main():
     X_df_named = X_df.add_suffix('_z')
     out = out.join(X_df_named)
 
-    out_path = TAB_DIR / 'ela_composites.csv'
+    out_path = cfg.TAB_DIR / 'ela_composites.csv'
     out.to_csv(out_path, index=False)
     log(f'\nSaved: {out_path}  ({len(out)} rows, {len(out.columns)} cols)')
 
     # ── 7. Figures ────────────────────────────────────────────────────────────
-    FIG_DIR.mkdir(parents=True, exist_ok=True)
-    _plot_intercorr(X_df, ELA_COLS)
+    cfg.FIG_DIR.mkdir(parents=True, exist_ok=True)
+    _plot_intercorr(X_df, cfg.ELA_COLS)
     _plot_domain_assignment(X_df, comp_df)
 
     log('\nPhase 0 complete.')
@@ -195,7 +190,7 @@ def _plot_intercorr(X_df, ela_cols):
                     fontweight='bold' if abs(v) > 0.5 else 'normal')
 
     # Domain color bands on axes
-    domain_order = (ELA_THREAT_COLS + ELA_DEPRIVATION_COLS + ELA_UNPRED_COLS)
+    domain_order = (cfg.ELA_THREAT_COLS + cfg.ELA_DEPRIVATION_COLS + cfg.ELA_UNPRED_COLS)
     ax_order = {c: i for i, c in enumerate(ela_cols)}
     for col, dom in FACTOR_DOMAIN.items():
         idx = ax_order.get(col)
@@ -220,7 +215,7 @@ def _plot_intercorr(X_df, ela_cols):
         ax.axvline(i - 0.5, color='white', lw=0.4)
 
     plt.tight_layout()
-    path = FIG_DIR / 'fig_ela_composite_intercorr.png'
+    path = cfg.FIG_DIR / 'fig_ela_composite_intercorr.png'
     fig.savefig(path)
     plt.close(fig)
     log(f'  Saved: {path.name}')
@@ -237,7 +232,7 @@ def _plot_domain_assignment(X_df, comp_df):
     # ── Panel A: domain membership matrix ────────────────────────────────────
     ax = axes[0]
     domains  = ['Threat', 'Deprivation', 'Unpredictability']
-    factors  = ELA_THREAT_COLS + ELA_DEPRIVATION_COLS + ELA_UNPRED_COLS
+    factors  = cfg.ELA_THREAT_COLS + cfg.ELA_DEPRIVATION_COLS + cfg.ELA_UNPRED_COLS
     mat = np.zeros((len(factors), len(domains)))
     for i, f in enumerate(factors):
         dom = FACTOR_DOMAIN.get(f)
@@ -271,7 +266,7 @@ def _plot_domain_assignment(X_df, comp_df):
 
     # ── Panel B: composite score distributions ────────────────────────────────
     ax2 = axes[1]
-    for i, (col, label) in enumerate(COMPOSITE_LABELS.items()):
+    for i, (col, label) in enumerate(cfg.COMPOSITE_LABELS.items()):
         vals = comp_df[col].dropna().values
         color = list(DOMAIN_COLORS.values())[i]
         ax2.hist(vals, bins=60, alpha=0.55, color=color, label=label,
@@ -284,7 +279,7 @@ def _plot_domain_assignment(X_df, comp_df):
     ax2.legend(fontsize=9)
 
     plt.tight_layout()
-    path = FIG_DIR / 'fig_ela_composites.png'
+    path = cfg.FIG_DIR / 'fig_ela_composites.png'
     fig.savefig(path)
     plt.close(fig)
     log(f'  Saved: {path.name}')

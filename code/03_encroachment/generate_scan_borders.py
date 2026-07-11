@@ -39,7 +39,7 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-from adtopo.config import ATLAS_DIR, DAT_DIR, REPRO_DIR, XCP_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('generate_scan_borders')
 
@@ -48,14 +48,14 @@ N_CORT     = 59412
 N_FULL     = 91282
 N_JOBS     = min(16, cpu_count())
 
-ATLAS_PATH = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+ATLAS_PATH = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 OUT_DIR    = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
 BORDER_DIR = OUT_DIR / 'borders'
 
 # Standard fsLR-32k midthickness (templateflow stubs at ELS_BIDS are empty;
 # all ABCD subjects are registered to the same space so any subject surface is valid)
-SURF_L = XCP_DIR / 'sub-DHCPMWJD/ses-04A/anat/sub-DHCPMWJD_ses-04A_rec-norm_hemi-L_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
-SURF_R = XCP_DIR / 'sub-DHCPMWJD/ses-04A/anat/sub-DHCPMWJD_ses-04A_rec-norm_hemi-R_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
+SURF_L = cfg.XCP_DIR / 'sub-DHCPMWJD/ses-04A/anat/sub-DHCPMWJD_ses-04A_rec-norm_hemi-L_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
+SURF_R = cfg.XCP_DIR / 'sub-DHCPMWJD/ses-04A/anat/sub-DHCPMWJD_ses-04A_rec-norm_hemi-R_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii'
 
 BOLDMAP_GLOB = (
     '*_task-rest_space-fsLR_den-91k_desc-denoised-spatially-interpolated-'
@@ -74,7 +74,7 @@ def log(msg=''):
 # ── SCAN mask loading ─────────────────────────────────────────────────────────
 
 def find_boldmap(sub_id):
-    hits = glob.glob(str(REPRO_DIR / sub_id / 'ses-00A' / 'func' / BOLDMAP_GLOB))
+    hits = glob.glob(str(cfg.REPRO_DIR / sub_id / 'ses-00A' / 'func' / BOLDMAP_GLOB))
     return hits[0] if hits else None
 
 
@@ -208,7 +208,7 @@ def main():
     log(f'\nAtlas loaded | cortical vertices: {cort_mask.sum():,}')
 
     # Load baseline dataframe
-    df = pd.read_csv(DAT_DIR / 'df_base.csv')
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
     log(f'Baseline dataframe N={len(df)}')
 
     # ── [1] Atlas template SCAN ───────────────────────────────────────────────

@@ -9,8 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from adtopo.config import BASE_DIR as ROOT
-comp = pd.read_csv(ROOT / 'outputs/tables/ela_composites.csv')
+from adtopo.config import cfg
 
 # composite-aligned factor columns (_z) grouped by composite, then the composites
 THREAT = ['ELA_physical_trauma_z', 'ELA_family_aggression_z', 'ELA_family_conflict_youth_z', 'ELA_family_anger_z']
@@ -28,40 +27,48 @@ labels = {
  'threat_composite': 'THREAT (composite)', 'deprivation_composite': 'DEPRIVATION (composite)',
  'unpredictability_composite': 'UNPREDICTABILITY (composite)',
 }
-R = comp[cols].corr()
 
-# directionality check: each factor vs its composite
-print("Directionality check (factor r with own composite):")
-for grp, cc in [(THREAT, 'threat_composite'), (DEPRIV, 'deprivation_composite'), (UNPRED, 'unpredictability_composite')]:
-    for f in grp:
-        print(f"  {labels[f]:40s} r(with {cc.split('_')[0]}) = {R.loc[f, cc]:+.3f}")
 
-disp = [labels[c] for c in cols]
-n = len(cols)
-fig, ax = plt.subplots(figsize=(9.2, 8.2))
-im = ax.imshow(R.values, cmap='RdBu_r', vmin=-1, vmax=1, aspect='equal')
-ax.set_xticks(range(n)); ax.set_yticks(range(n))
-ax.set_xticklabels(disp, rotation=45, ha='right', fontsize=7.5)
-ax.set_yticklabels(disp, fontsize=7.5)
-# bold the composite tick labels
-for i, c in enumerate(cols):
-    if c in COMPS:
-        ax.get_xticklabels()[i].set_fontweight('bold')
-        ax.get_yticklabels()[i].set_fontweight('bold')
-# annotate
-for i in range(n):
-    for j in range(n):
-        v = R.values[i, j]
-        ax.text(j, i, f"{v:.2f}", ha='center', va='center',
-                fontsize=6.0, color='white' if abs(v) > 0.55 else 'black')
-# separators between composite blocks and before the composites
-for pos in [3.5, 7.5, 9.5]:
-    ax.axhline(pos, color='k', lw=1.1); ax.axvline(pos, color='k', lw=1.1)
-cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-cbar.set_label('Pearson r', fontsize=9)
-ax.set_title('Intercorrelations among adversity factors and composites', fontsize=11, pad=10)
-plt.tight_layout()
-outdir = ROOT / 'outputs/figures/supplement'; outdir.mkdir(parents=True, exist_ok=True)
-for ext in ['png', 'pdf']:
-    fig.savefig(outdir / f'figS1_ela_correlation.{ext}', dpi=300, bbox_inches='tight')
-print("Saved:", outdir / 'figS1_ela_correlation.png')
+def main():
+    comp = pd.read_csv(cfg.BASE_DIR / 'outputs/tables/ela_composites.csv')
+    R = comp[cols].corr()
+
+    # directionality check: each factor vs its composite
+    print("Directionality check (factor r with own composite):")
+    for grp, cc in [(THREAT, 'threat_composite'), (DEPRIV, 'deprivation_composite'), (UNPRED, 'unpredictability_composite')]:
+        for f in grp:
+            print(f"  {labels[f]:40s} r(with {cc.split('_')[0]}) = {R.loc[f, cc]:+.3f}")
+
+    disp = [labels[c] for c in cols]
+    n = len(cols)
+    fig, ax = plt.subplots(figsize=(9.2, 8.2))
+    im = ax.imshow(R.values, cmap='RdBu_r', vmin=-1, vmax=1, aspect='equal')
+    ax.set_xticks(range(n)); ax.set_yticks(range(n))
+    ax.set_xticklabels(disp, rotation=45, ha='right', fontsize=7.5)
+    ax.set_yticklabels(disp, fontsize=7.5)
+    # bold the composite tick labels
+    for i, c in enumerate(cols):
+        if c in COMPS:
+            ax.get_xticklabels()[i].set_fontweight('bold')
+            ax.get_yticklabels()[i].set_fontweight('bold')
+    # annotate
+    for i in range(n):
+        for j in range(n):
+            v = R.values[i, j]
+            ax.text(j, i, f"{v:.2f}", ha='center', va='center',
+                    fontsize=6.0, color='white' if abs(v) > 0.55 else 'black')
+    # separators between composite blocks and before the composites
+    for pos in [3.5, 7.5, 9.5]:
+        ax.axhline(pos, color='k', lw=1.1); ax.axvline(pos, color='k', lw=1.1)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label('Pearson r', fontsize=9)
+    ax.set_title('Intercorrelations among adversity factors and composites', fontsize=11, pad=10)
+    plt.tight_layout()
+    outdir = cfg.BASE_DIR / 'outputs/figures/supplement'; outdir.mkdir(parents=True, exist_ok=True)
+    for ext in ['png', 'pdf']:
+        fig.savefig(outdir / f'figS1_ela_correlation.{ext}', dpi=300, bbox_inches='tight')
+    print("Saved:", outdir / 'figS1_ela_correlation.png')
+
+
+if __name__ == '__main__':
+    main()

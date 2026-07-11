@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-from adtopo.config import TAB_DIR, DAT_DIR, NETWORKS, ELA_COLS, ELA_LABELS_SHORT
+from adtopo.config import cfg
 from adtopo.bayes_factors import _bic, bf10_from_bic, label_bf
 from adtopo.logging_utils import get_logger
 _log = get_logger('bayes_factors_individual')
@@ -39,38 +39,43 @@ def log(m=''):
     _log.info(str(m)); log_lines.append(str(m))
 
 
-df = pd.read_csv(DAT_DIR / 'df_base.csv')
-log(f'Loaded df_base N={len(df)}\n')
+def main():
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    log(f'Loaded df_base N={len(df)}\n')
 
-log('=' * 74)
-log('BIVARIATE Bayes factors — individual ELA factor -> prop_NET (one at a time)')
-log('=' * 74)
-rows = []
-for fac in ELA_COLS:
-    for net in NETWORKS:
-        outcome = f'prop_{net}'
-        need = [outcome, fac] + COVARS + [SITE]
-        tmp = df[[c for c in need if c in df.columns]].dropna().copy()
-        tmp[SITE] = tmp[SITE].astype(str)
-        if len(tmp) < 50:
-            continue
-        bic_null = _bic(tmp, outcome, COVARS)
-        bic_full = _bic(tmp, outcome, [fac] + COVARS)
-        bf10 = bf10_from_bic(bic_null, bic_full)
-        rows.append({'predictor': fac, 'network': net, 'n': len(tmp),
-                     'BF10': bf10, 'BF01': 1.0 / bf10 if bf10 > 0 else np.inf,
-                     'log10_BF10': np.log10(bf10) if bf10 > 0 else np.nan,
-                     'evidence': label_bf(bf10)})
-out = pd.DataFrame(rows)
-out.to_csv(TAB_DIR / 'supp_bayes_factors_individual.csv', index=False)
+    log('=' * 74)
+    log('BIVARIATE Bayes factors — individual ELA factor -> prop_NET (one at a time)')
+    log('=' * 74)
+    rows = []
+    for fac in cfg.ELA_COLS:
+        for net in cfg.NETWORKS:
+            outcome = f'prop_{net}'
+            need = [outcome, fac] + COVARS + [SITE]
+            tmp = df[[c for c in need if c in df.columns]].dropna().copy()
+            tmp[SITE] = tmp[SITE].astype(str)
+            if len(tmp) < 50:
+                continue
+            bic_null = _bic(tmp, outcome, COVARS)
+            bic_full = _bic(tmp, outcome, [fac] + COVARS)
+            bf10 = bf10_from_bic(bic_null, bic_full)
+            rows.append({'predictor': fac, 'network': net, 'n': len(tmp),
+                         'BF10': bf10, 'BF01': 1.0 / bf10 if bf10 > 0 else np.inf,
+                         'log10_BF10': np.log10(bf10) if bf10 > 0 else np.nan,
+                         'evidence': label_bf(bf10)})
+    out = pd.DataFrame(rows)
+    out.to_csv(cfg.TAB_DIR / 'supp_bayes_factors_individual.csv', index=False)
 
-log('\n  factor -> SCAN (headline bivariate effects):')
-scan = out[out.network == 'SCAN'].copy()
-scan['absBF'] = scan['BF10'].where(scan['BF10'] >= 1, 1.0 / scan['BF10'])
-for _, r in scan.sort_values('BF10', ascending=False).iterrows():
-    bf_str = (f'BF10={r.BF10:.3g}' if r.BF10 >= 1 else f'BF01={1/r.BF10:.3g}')
-    log(f'    {ELA_LABELS_SHORT[r.predictor]:22s} {bf_str:16s} ({r.evidence})')
+    log('\n  factor -> SCAN (headline bivariate effects):')
+    scan = out[out.network == 'SCAN'].copy()
+    scan['absBF'] = scan['BF10'].where(scan['BF10'] >= 1, 1.0 / scan['BF10'])
+    for _, r in scan.sort_values('BF10', ascending=False).iterrows():
+        bf_str = (f'BF10={r.BF10:.3g}' if r.BF10 >= 1 else f'BF01={1/r.BF10:.3g}')
+        log(f'    {cfg.ELA_LABELS_SHORT[r.predictor]:22s} {bf_str:16s} ({r.evidence})')
 
-with open(DAT_DIR / 'supp_bayes_factors_individual.txt', 'w') as f:
-    f.write('\n'.join(log_lines))
-log('\nSaved: supp_bayes_factors_individual.csv')
+    with open(cfg.DAT_DIR / 'supp_bayes_factors_individual.txt', 'w') as f:
+        f.write('\n'.join(log_lines))
+    log('\nSaved: supp_bayes_factors_individual.csv')
+
+
+if __name__ == '__main__':
+    main()

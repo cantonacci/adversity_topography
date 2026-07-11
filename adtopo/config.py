@@ -313,3 +313,63 @@ def check_required_inputs(files=None, strict=True):
             'Missing required input file(s):\n  ' + '\n  '.join(missing) +
             '\n(Set external paths in config.local.sh — see config.local.example.sh.)')
     return missing
+
+
+# ── Single immutable config object ────────────────────────────────────────────
+# Preferred access is `from adtopo.config import cfg` then `cfg.FIG_DIR` etc.,
+# rather than importing many individual module globals. `cfg` is read-only so
+# configuration cannot be mutated at run time. The module-level names above
+# remain defined (cfg draws its values from them), but code should reference
+# them through `cfg`.
+import types as _types
+
+
+class _FrozenConfig:
+    """Read-only attribute view over a fixed set of config values.
+
+    Picklable (so it can cross joblib/loky process boundaries) via explicit
+    __getstate__/__setstate__; __getattr__ guards the backing store name to
+    avoid infinite recursion on a not-yet-initialised (unpickled) instance.
+    """
+    __slots__ = ('_values',)
+
+    def __init__(self, values):
+        object.__setattr__(self, '_values', dict(values))
+
+    def __getattr__(self, name):
+        # __getattr__ only fires for attributes missing from the instance; guard
+        # the backing store so an uninitialised instance raises instead of
+        # recursing forever (e.g. during unpickling before _values is set).
+        if name == '_values':
+            raise AttributeError(name)
+        try:
+            return self._values[name]
+        except KeyError:
+            raise AttributeError(f'config has no attribute {name!r}')
+
+    def __setattr__(self, name, value):
+        raise AttributeError('adtopo config is read-only (cannot set '
+                             f'{name!r}); edit adtopo/config.py instead')
+
+    def __getstate__(self):
+        return self._values
+
+    def __setstate__(self, state):
+        object.__setattr__(self, '_values', state)
+
+    def __dir__(self):
+        return sorted(self._values)
+
+    def __repr__(self):
+        return f'cfg({len(self._values)} settings)'
+
+
+# Auto-collect the public API: every module-level constant/function defined
+# above (excluding private names, imported modules, and the Path helper).
+cfg = _FrozenConfig({
+    _k: _v for _k, _v in dict(globals()).items()
+    if not _k.startswith('_')
+    and _k != 'Path'
+    and not isinstance(_v, _types.ModuleType)
+    and _k not in ('cfg',)
+})

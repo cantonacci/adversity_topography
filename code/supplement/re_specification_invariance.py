@@ -29,7 +29,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-from adtopo.config import TAB_DIR, DAT_DIR, COMPOSITE_COLS, COMPOSITE_LABELS
+from adtopo.config import cfg
 from adtopo.re_models import fit_spec, SPECS, SPEC_LABELS
 from adtopo.logging_utils import get_logger
 _log = get_logger('re_specification_invariance')
@@ -59,11 +59,6 @@ def log(msg=''):
     log_lines.append(str(msg))
 
 
-df = pd.read_csv(DAT_DIR / 'df_base.csv')
-log(f'Loaded df_base N={len(df)}')
-log(f'Outcome={OUTCOME}; covariates={COVARIATES}; site=study_site fixed/random per spec\n')
-
-
 def run_block(kind, predictors, targets):
     """kind in {'bivariate','multivariate'}. Returns tidy DataFrame."""
     rows = []
@@ -85,54 +80,65 @@ def run_block(kind, predictors, targets):
     return pd.DataFrame(rows)
 
 
-# ── (1) Bivariate ─────────────────────────────────────────────────────────────
-log('=' * 70)
-log('(1) BIVARIATE  —  each composite -> prop_SCAN (one predictor at a time)')
-log('=' * 70)
-biv = run_block('bivariate', COMPOSITE_COLS, COMPOSITE_COLS)
-biv.to_csv(TAB_DIR / 'supp_re_invariance_bivariate.csv', index=False)
+def main():
+    global df
 
-for tgt in COMPOSITE_COLS:
-    sub = biv[biv['target'] == tgt]
-    rep = REPORTED_BIVARIATE_PARTIAL_R.get(tgt, np.nan)
-    log(f'\n  {COMPOSITE_LABELS[tgt]} -> SCAN   (reported partial r = {rep:.4f}, '
-        f'reported spec = {REPORTED_SPEC["bivariate"]})')
-    for _, r in sub.iterrows():
-        flag = '  <-- reported spec' if r['spec'] == REPORTED_SPEC['bivariate'] else ''
-        log(f'    {r["spec"]:24s} partial_r={r["partial_r"]:+.4f}  '
-            f'beta={r["beta"]:+.5f}  p={r["p"]:.2e}  conv={r["converged"]}{flag}')
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    log(f'Loaded df_base N={len(df)}')
+    log(f'Outcome={OUTCOME}; covariates={COVARIATES}; site=study_site fixed/random per spec\n')
 
-# ── (2) Multivariate ──────────────────────────────────────────────────────────
-log('\n' + '=' * 70)
-log('(2) MULTIVARIATE  —  all three composites -> prop_SCAN simultaneously')
-log('=' * 70)
-mv = run_block('multivariate', COMPOSITE_COLS, COMPOSITE_COLS)
-mv.to_csv(TAB_DIR / 'supp_re_invariance_multivariate.csv', index=False)
+    # ── (1) Bivariate ─────────────────────────────────────────────────────────────
+    log('=' * 70)
+    log('(1) BIVARIATE  —  each composite -> prop_SCAN (one predictor at a time)')
+    log('=' * 70)
+    biv = run_block('bivariate', cfg.COMPOSITE_COLS, cfg.COMPOSITE_COLS)
+    biv.to_csv(cfg.TAB_DIR / 'supp_re_invariance_bivariate.csv', index=False)
 
-for tgt in COMPOSITE_COLS:
-    sub = mv[mv['target'] == tgt]
-    rep = REPORTED_MULTIVARIATE_BETA.get(tgt, np.nan)
-    rep_s = f'{rep:.4f}' if not np.isnan(rep) else 'n/a'
-    log(f'\n  {COMPOSITE_LABELS[tgt]} (adjusted) -> SCAN   (reported beta = {rep_s}, '
-        f'reported spec = {REPORTED_SPEC["multivariate"]})')
-    for _, r in sub.iterrows():
-        flag = '  <-- reported spec' if r['spec'] == REPORTED_SPEC['multivariate'] else ''
-        log(f'    {r["spec"]:24s} beta={r["beta"]:+.5f}  se={r["se"]:.5f}  '
-            f'p={r["p"]:.2e}  conv={r["converged"]}  [{r["var_components"]}]{flag}')
+    for tgt in cfg.COMPOSITE_COLS:
+        sub = biv[biv['target'] == tgt]
+        rep = REPORTED_BIVARIATE_PARTIAL_R.get(tgt, np.nan)
+        log(f'\n  {cfg.COMPOSITE_LABELS[tgt]} -> SCAN   (reported partial r = {rep:.4f}, '
+            f'reported spec = {REPORTED_SPEC["bivariate"]})')
+        for _, r in sub.iterrows():
+            flag = '  <-- reported spec' if r['spec'] == REPORTED_SPEC['bivariate'] else ''
+            log(f'    {r["spec"]:24s} partial_r={r["partial_r"]:+.4f}  '
+                f'beta={r["beta"]:+.5f}  p={r["p"]:.2e}  conv={r["converged"]}{flag}')
 
-# ── Compact invariance summary for the target (threat) ────────────────────────
-log('\n' + '=' * 70)
-log('INVARIANCE SUMMARY (threat -> SCAN, the headline effect)')
-log('=' * 70)
-for kind, tbl, val, rep in [
-    ('bivariate', biv, 'partial_r', REPORTED_BIVARIATE_PARTIAL_R['threat_composite']),
-    ('multivariate', mv, 'beta', REPORTED_MULTIVARIATE_BETA['threat_composite']),
-]:
-    s = tbl[tbl['target'] == 'threat_composite'][val].astype(float)
-    log(f'  {kind:13s}: {val} range [{s.min():+.5f}, {s.max():+.5f}], '
-        f'max abs deviation from reported ({rep:+.5f}) = {np.nanmax(np.abs(s - rep)):.5f}')
+    # ── (2) Multivariate ──────────────────────────────────────────────────────────
+    log('\n' + '=' * 70)
+    log('(2) MULTIVARIATE  —  all three composites -> prop_SCAN simultaneously')
+    log('=' * 70)
+    mv = run_block('multivariate', cfg.COMPOSITE_COLS, cfg.COMPOSITE_COLS)
+    mv.to_csv(cfg.TAB_DIR / 'supp_re_invariance_multivariate.csv', index=False)
 
-with open(DAT_DIR / 'supp_re_invariance.txt', 'w') as f:
-    f.write('\n'.join(log_lines))
-log('\nSaved: supp_re_invariance_bivariate.csv, supp_re_invariance_multivariate.csv, '
-    'supp_re_invariance.txt')
+    for tgt in cfg.COMPOSITE_COLS:
+        sub = mv[mv['target'] == tgt]
+        rep = REPORTED_MULTIVARIATE_BETA.get(tgt, np.nan)
+        rep_s = f'{rep:.4f}' if not np.isnan(rep) else 'n/a'
+        log(f'\n  {cfg.COMPOSITE_LABELS[tgt]} (adjusted) -> SCAN   (reported beta = {rep_s}, '
+            f'reported spec = {REPORTED_SPEC["multivariate"]})')
+        for _, r in sub.iterrows():
+            flag = '  <-- reported spec' if r['spec'] == REPORTED_SPEC['multivariate'] else ''
+            log(f'    {r["spec"]:24s} beta={r["beta"]:+.5f}  se={r["se"]:.5f}  '
+                f'p={r["p"]:.2e}  conv={r["converged"]}  [{r["var_components"]}]{flag}')
+
+    # ── Compact invariance summary for the target (threat) ────────────────────────
+    log('\n' + '=' * 70)
+    log('INVARIANCE SUMMARY (threat -> SCAN, the headline effect)')
+    log('=' * 70)
+    for kind, tbl, val, rep in [
+        ('bivariate', biv, 'partial_r', REPORTED_BIVARIATE_PARTIAL_R['threat_composite']),
+        ('multivariate', mv, 'beta', REPORTED_MULTIVARIATE_BETA['threat_composite']),
+    ]:
+        s = tbl[tbl['target'] == 'threat_composite'][val].astype(float)
+        log(f'  {kind:13s}: {val} range [{s.min():+.5f}, {s.max():+.5f}], '
+            f'max abs deviation from reported ({rep:+.5f}) = {np.nanmax(np.abs(s - rep)):.5f}')
+
+    with open(cfg.DAT_DIR / 'supp_re_invariance.txt', 'w') as f:
+        f.write('\n'.join(log_lines))
+    log('\nSaved: supp_re_invariance_bivariate.csv, supp_re_invariance_multivariate.csv, '
+        'supp_re_invariance.txt')
+
+
+if __name__ == '__main__':
+    main()

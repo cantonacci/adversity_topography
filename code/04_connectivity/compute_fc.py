@@ -35,7 +35,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-from adtopo.config import DAT_DIR, REPRO_DIR, FC_DTSERIES_DIR
+from adtopo.config import cfg
 from adtopo.fc_utils import (
     MIN_FRAMES,
     BOLDMAP_GLOB, DTSERIES_GLOB, MOTION_GLOB,
@@ -45,7 +45,7 @@ from adtopo.fc_utils import (
 )
 
 # ── constants ──────────────────────────────────────────────────────────────────
-FC_DIR    = FC_DTSERIES_DIR
+FC_DIR    = cfg.FC_DTSERIES_DIR
 
 # Session → subject-list dataframe
 SESSION_DF = {
@@ -57,7 +57,7 @@ SESSION_DF = {
 
 
 def process_subject(sub_id, session):
-    func_repro = REPRO_DIR / sub_id / session / 'func'
+    func_repro = cfg.REPRO_DIR / sub_id / session / 'func'
     func_fc    = FC_DIR    / sub_id / session / 'func'
 
     boldmap_p  = find_file(func_repro, BOLDMAP_GLOB)
@@ -128,7 +128,7 @@ def main():
     session = args.session
     df_name = SESSION_DF[session]
 
-    out_dir = DAT_DIR / f'fc_chunks_{session}'
+    out_dir = cfg.DAT_DIR / f'fc_chunks_{session}'
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f'fc_chunk_{args.chunk_idx:03d}.csv'
 
@@ -136,7 +136,7 @@ def main():
     log(f'FC COMPUTATION  session={session}  chunk {args.chunk_idx} of {args.n_chunks}')
     log('=' * 60)
 
-    df      = pd.read_csv(DAT_DIR / df_name)
+    df      = pd.read_csv(cfg.DAT_DIR / df_name)
     sub_ids = df['sub_ID'].tolist()
     chunks  = np.array_split(sub_ids, args.n_chunks)
     chunk   = list(chunks[args.chunk_idx])

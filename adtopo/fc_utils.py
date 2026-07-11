@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 
-from adtopo.config import NETWORKS
+from adtopo.config import cfg
 
 # ── constants (identical across both FC scripts) ─────────────────────────────
 FD_THRESH  = 0.2
@@ -38,7 +38,7 @@ NET_LABEL = {
     'SAL': 8, 'CO': 9, 'SMD': 10, 'SML': 11, 'AUD': 12,
     'Tpole': 13, 'MTL': 14, 'PMN': 15, 'PON': 16, 'SCAN': 18,
 }
-NET_NAMES = list(NETWORKS)  # 15 networks, canonical order
+NET_NAMES = list(cfg.NETWORKS)  # 15 networks, canonical order
 
 FC_COLS = [
     f'fc_{NET_NAMES[i]}_{NET_NAMES[j]}'

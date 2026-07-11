@@ -31,18 +31,12 @@ from statsmodels.regression.mixed_linear_model import MixedLM
 from statsmodels.stats.multitest import multipletests
 from pathlib import Path
 
-from adtopo.config import (
-    FIG_DIR, TAB_DIR, DAT_DIR,
-    NETWORKS, ELA_COLS, ELA_LABELS, ELA_LABELS_SHORT,
-    COMPOSITE_COLS, COMPOSITE_LABELS, COMPOSITE_LABELS_SHORT,
-    NET_GROUPS, NET_GROUP_COLOR,
-    N_TESTS, N_TESTS_COMPOSITES, BONFERRONI_ALPHA, RANDOM_SEED,
-)
+from adtopo.config import cfg
 from adtopo.re_models import fit_ols_cluster_table
 from adtopo.logging_utils import get_logger
 _log = get_logger('bivariate_associations')
 
-np.random.seed(RANDOM_SEED)
+np.random.seed(cfg.RANDOM_SEED)
 
 plt.rcParams.update({
     'font.family': 'sans-serif',
@@ -67,16 +61,6 @@ log_lines = []
 def log(msg=''):
     _log.info(str(msg))
     log_lines.append(str(msg))
-
-# ── Load data ─────────────────────────────────────────────────────────────────
-
-df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
-df_y2   = pd.read_csv(DAT_DIR / 'df_y2.csv')
-df_y4   = pd.read_csv(DAT_DIR / 'df_y4.csv')
-df_y6   = pd.read_csv(DAT_DIR / 'df_y6.csv')
-log(f'Loaded: df_base N={len(df_base)}, df_y2 N={len(df_y2)}, '
-    f'df_y4 N={len(df_y4)}, df_y6 N={len(df_y6)}')
-
 
 # ── Core association matrix ───────────────────────────────────────────────────
 
@@ -225,7 +209,7 @@ def collect_sig(r_mat, p_mat, q_mat, ci_lo, ci_hi, timepoint, bonf_alpha):
 
 def net_group_summary(r_mat, label):
     log(f'\n  {label}:')
-    for grp, nets in NET_GROUPS.items():
+    for grp, nets in cfg.NET_GROUPS.items():
         avail = [n for n in nets if n in r_mat.columns]
         if avail:
             mean_abs_r = np.nanmean(np.abs(r_mat[avail].values.astype(float)))
@@ -234,112 +218,125 @@ def net_group_summary(r_mat, label):
 
 # ── Run one analysis tag ──────────────────────────────────────────────────────
 
-TIMEPOINTS = [
-    ('baseline', df_base, '00A'),
-    ('year2',    df_y2,   '02A'),
-    ('year4',    df_y4,   '04A'),
-    ('year6',    df_y6,   '06A'),
-]
+def main():
+    # ── Load data ─────────────────────────────────────────────────────────────
+    df_base = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    df_y2   = pd.read_csv(cfg.DAT_DIR / 'df_y2.csv')
+    df_y4   = pd.read_csv(cfg.DAT_DIR / 'df_y4.csv')
+    df_y6   = pd.read_csv(cfg.DAT_DIR / 'df_y6.csv')
+    log(f'Loaded: df_base N={len(df_base)}, df_y2 N={len(df_y2)}, '
+        f'df_y4 N={len(df_y4)}, df_y6 N={len(df_y6)}')
 
-ANALYSES = [
-    {
-        'tag':               'individual',
-        'pred_cols':         ELA_COLS,
-        'pred_labels':       ELA_LABELS,
-        'pred_labels_short': [ELA_LABELS_SHORT[e] for e in ELA_COLS],
-        'n_tests':           N_TESTS,
-        'bonf_alpha':        BONFERRONI_ALPHA,
-    },
-    {
-        'tag':               'composites',
-        'pred_cols':         COMPOSITE_COLS,
-        'pred_labels':       [COMPOSITE_LABELS[c] for c in COMPOSITE_COLS],
-        'pred_labels_short': [COMPOSITE_LABELS_SHORT[c] for c in COMPOSITE_COLS],
-        'n_tests':           N_TESTS_COMPOSITES,
-        'bonf_alpha':        0.05 / N_TESTS_COMPOSITES,
-    },
-]
+    TIMEPOINTS = [
+        ('baseline', df_base, '00A'),
+        ('year2',    df_y2,   '02A'),
+        ('year4',    df_y4,   '04A'),
+        ('year6',    df_y6,   '06A'),
+    ]
 
-for analysis in ANALYSES:
-    tag          = analysis['tag']
-    pred_cols    = analysis['pred_cols']
-    pred_labels  = analysis['pred_labels']
-    pred_labels_s = analysis['pred_labels_short']
-    n_tests      = analysis['n_tests']
-    bonf_alpha   = analysis['bonf_alpha']
+    ANALYSES = [
+        {
+            'tag':               'individual',
+            'pred_cols':         cfg.ELA_COLS,
+            'pred_labels':       cfg.ELA_LABELS,
+            'pred_labels_short': [cfg.ELA_LABELS_SHORT[e] for e in cfg.ELA_COLS],
+            'n_tests':           cfg.N_TESTS,
+            'bonf_alpha':        cfg.BONFERRONI_ALPHA,
+        },
+        {
+            'tag':               'composites',
+            'pred_cols':         cfg.COMPOSITE_COLS,
+            'pred_labels':       [cfg.COMPOSITE_LABELS[c] for c in cfg.COMPOSITE_COLS],
+            'pred_labels_short': [cfg.COMPOSITE_LABELS_SHORT[c] for c in cfg.COMPOSITE_COLS],
+            'n_tests':           cfg.N_TESTS_COMPOSITES,
+            'bonf_alpha':        0.05 / cfg.N_TESTS_COMPOSITES,
+        },
+    ]
+
+    for analysis in ANALYSES:
+        tag          = analysis['tag']
+        pred_cols    = analysis['pred_cols']
+        pred_labels  = analysis['pred_labels']
+        pred_labels_s = analysis['pred_labels_short']
+        n_tests      = analysis['n_tests']
+        bonf_alpha   = analysis['bonf_alpha']
+
+        log()
+        log('=' * 70)
+        log(f'ANALYSIS: {tag.upper()}  ({len(pred_cols)} predictors x {len(cfg.NETWORKS)} networks)')
+        log('=' * 70)
+
+        all_sig_dfs = []
+
+        for tp_label, df_tp, tp_code in TIMEPOINTS:
+            # Filter to predictors that exist in this df
+            avail_preds = [p for p in pred_cols if p in df_tp.columns]
+            if not avail_preds:
+                log(f'  [{tp_label}] WARNING: none of pred_cols found in dataframe. Skipping.')
+                continue
+
+            log(f'\n  --- {tp_label} ---')
+
+            # Phase 1 writes generic 'fd' and 'study_site'
+            fd_col   = 'fd'   if 'fd'   in df_tp.columns else 'rest_mean_FD'
+            site_col = 'study_site' if 'study_site' in df_tp.columns else 'study_site_baseline'
+
+            r_mat, p_mat, ci_lo, ci_hi = assoc_matrix(
+                df_tp, avail_preds, cfg.NETWORKS,
+                fd_col=fd_col, site_col=site_col,
+                family_col='family_id', label=tp_label,
+            )
+
+            q_mat = apply_fdr(p_mat, n_tests, tp_label)
+
+            # Save matrices
+            r_mat.round(4).to_csv(cfg.TAB_DIR / f'phase2_{tag}_r_matrix_{tp_label}.csv')
+            p_mat.round(6).to_csv(cfg.TAB_DIR / f'phase2_{tag}_p_matrix_{tp_label}.csv')
+            q_mat.round(6).to_csv(cfg.TAB_DIR / f'phase2_{tag}_q_matrix_{tp_label}.csv')
+
+            # Heatmap
+            tp_title_map = {
+                'baseline': 'Baseline (~9-10y)',
+                'year2':    'Year-2 (~11-12y)',
+                'year4':    'Year-4 (~13-14y)',
+                'year6':    'Year-6 (~15-16y)',
+            }
+            draw_heatmap(
+                r_mat, q_mat, p_mat,
+                pred_labels_s, cfg.NETWORKS,
+                title=f'ELA [{tag}] × Network Proportion — Partial r\n({tp_title_map[tp_label]})',
+                fname=cfg.FIG_DIR / f'fig_phase2_{tag}_heatmap_{tp_label}.png',
+                bonf_alpha=bonf_alpha,
+            )
+
+            # Significant associations
+            sig_df = collect_sig(r_mat, p_mat, q_mat, ci_lo, ci_hi, tp_label, bonf_alpha)
+            all_sig_dfs.append(sig_df)
+            log(f'  [{tp_label}] Significant (FDR q<0.05): {len(sig_df)}')
+            if len(sig_df):
+                log(sig_df.sort_values('partial_r', key=abs, ascending=False).to_string(index=False))
+
+            # Network group summary
+            net_group_summary(r_mat, tp_label)
+
+        # Combine and save significant associations
+        if all_sig_dfs:
+            sig_all = pd.concat(all_sig_dfs, ignore_index=True)
+        else:
+            sig_all = pd.DataFrame()
+        sig_all.to_csv(cfg.TAB_DIR / f'phase2_{tag}_significant_associations.csv', index=False)
+        log(f'\n  Saved phase2_{tag}_significant_associations.csv '
+            f'(total FDR-sig rows: {len(sig_all)})')
 
     log()
     log('=' * 70)
-    log(f'ANALYSIS: {tag.upper()}  ({len(pred_cols)} predictors x {len(NETWORKS)} networks)')
-    log('=' * 70)
 
-    all_sig_dfs = []
+    with open(cfg.DAT_DIR / 'progress_log.txt', 'a') as f:
+        f.write('\n\nPHASE 2 COMPLETE\n')
+        f.write('\n'.join(log_lines[-40:]))
 
-    for tp_label, df_tp, tp_code in TIMEPOINTS:
-        # Filter to predictors that exist in this df
-        avail_preds = [p for p in pred_cols if p in df_tp.columns]
-        if not avail_preds:
-            log(f'  [{tp_label}] WARNING: none of pred_cols found in dataframe. Skipping.')
-            continue
+    log('Phase 2 complete.')
 
-        log(f'\n  --- {tp_label} ---')
 
-        # Phase 1 writes generic 'fd' and 'study_site'
-        fd_col   = 'fd'   if 'fd'   in df_tp.columns else 'rest_mean_FD'
-        site_col = 'study_site' if 'study_site' in df_tp.columns else 'study_site_baseline'
-
-        r_mat, p_mat, ci_lo, ci_hi = assoc_matrix(
-            df_tp, avail_preds, NETWORKS,
-            fd_col=fd_col, site_col=site_col,
-            family_col='family_id', label=tp_label,
-        )
-
-        q_mat = apply_fdr(p_mat, n_tests, tp_label)
-
-        # Save matrices
-        r_mat.round(4).to_csv(TAB_DIR / f'phase2_{tag}_r_matrix_{tp_label}.csv')
-        p_mat.round(6).to_csv(TAB_DIR / f'phase2_{tag}_p_matrix_{tp_label}.csv')
-        q_mat.round(6).to_csv(TAB_DIR / f'phase2_{tag}_q_matrix_{tp_label}.csv')
-
-        # Heatmap
-        tp_title_map = {
-            'baseline': 'Baseline (~9-10y)',
-            'year2':    'Year-2 (~11-12y)',
-            'year4':    'Year-4 (~13-14y)',
-            'year6':    'Year-6 (~15-16y)',
-        }
-        draw_heatmap(
-            r_mat, q_mat, p_mat,
-            pred_labels_s, NETWORKS,
-            title=f'ELA [{tag}] × Network Proportion — Partial r\n({tp_title_map[tp_label]})',
-            fname=FIG_DIR / f'fig_phase2_{tag}_heatmap_{tp_label}.png',
-            bonf_alpha=bonf_alpha,
-        )
-
-        # Significant associations
-        sig_df = collect_sig(r_mat, p_mat, q_mat, ci_lo, ci_hi, tp_label, bonf_alpha)
-        all_sig_dfs.append(sig_df)
-        log(f'  [{tp_label}] Significant (FDR q<0.05): {len(sig_df)}')
-        if len(sig_df):
-            log(sig_df.sort_values('partial_r', key=abs, ascending=False).to_string(index=False))
-
-        # Network group summary
-        net_group_summary(r_mat, tp_label)
-
-    # Combine and save significant associations
-    if all_sig_dfs:
-        sig_all = pd.concat(all_sig_dfs, ignore_index=True)
-    else:
-        sig_all = pd.DataFrame()
-    sig_all.to_csv(TAB_DIR / f'phase2_{tag}_significant_associations.csv', index=False)
-    log(f'\n  Saved phase2_{tag}_significant_associations.csv '
-        f'(total FDR-sig rows: {len(sig_all)})')
-
-log()
-log('=' * 70)
-
-with open(DAT_DIR / 'progress_log.txt', 'a') as f:
-    f.write('\n\nPHASE 2 COMPLETE\n')
-    f.write('\n'.join(log_lines[-40:]))
-
-log('Phase 2 complete.')
+if __name__ == '__main__':
+    main()

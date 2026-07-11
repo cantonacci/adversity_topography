@@ -30,19 +30,19 @@ from matplotlib.colors import TwoSlopeNorm, LinearSegmentedColormap
 from matplotlib.patches import FancyBboxPatch
 import nibabel as nib
 
-from adtopo.config import DAT_DIR, NETWORKS, ATLAS_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('fc_figures')
 
 # ── paths ─────────────────────────────────────────────────────────────────────
-FC_PATH    = DAT_DIR / 'fc_ses-00A.csv'
+FC_PATH    = cfg.DAT_DIR / 'fc_ses-00A.csv'
 RES_PATH   = Path(__file__).parent.parent / 'outputs' / 'tables' / 'fc_lme_threat_baseline.csv'
 FIG_DIR    = Path(__file__).parent.parent / 'outputs' / 'figures' / 'fc'
 CIFTI_DIR  = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
-ATLAS_PATH = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+ATLAS_PATH = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 
 # ── network config ─────────────────────────────────────────────────────────────
-NET_NAMES = list(NETWORKS)
+NET_NAMES = list(cfg.NETWORKS)
 N         = len(NET_NAMES)
 NET_IDX   = {n: i for i, n in enumerate(NET_NAMES)}
 
@@ -472,7 +472,7 @@ def main():
 
     df_res  = pd.read_csv(RES_PATH)
     df_fc   = pd.read_csv(FC_PATH)
-    df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
+    df_base = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
     df_cov  = df_base[['sub_ID', 'threat_composite']].copy()
 
     # Add site column to df_cov if needed for group labeling

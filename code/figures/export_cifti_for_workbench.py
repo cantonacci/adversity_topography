@@ -22,14 +22,14 @@ import pandas as pd
 import nibabel as nib
 from pathlib import Path
 
-from adtopo.config import TAB_DIR, ATLAS_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('export_cifti_for_workbench')
 
 OUT_DIR = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-ATLAS_PATH = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+ATLAS_PATH = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 
 NET_MAP = {
     'DMN': 1,  'VIS': 2,  'FP': 3,   'DAN': 5,   'VAN': 7,
@@ -108,7 +108,7 @@ def export_delta_r2(atlas_data, bm_ax):
     log('\n[1] ΔR² maps...')
 
     # Primary source: phase3_composites_brain_surface_inputs (has all timepoints)
-    bsi_path = TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
+    bsi_path = cfg.TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
     if not bsi_path.exists():
         log(f'  WARNING: {bsi_path} not found — skipping ΔR² export')
         return
@@ -123,7 +123,7 @@ def export_delta_r2(atlas_data, bm_ax):
         gmap = make_grayordinate_map(atlas_data, scores)
 
         # Also try to load the individual-ELA delta_r2 table for richer info
-        indiv_path = TAB_DIR / f'phase3_individual_delta_r2_{tp}.csv'
+        indiv_path = cfg.TAB_DIR / f'phase3_individual_delta_r2_{tp}.csv'
         extra_maps = []
         extra_names = []
         if indiv_path.exists():
@@ -151,7 +151,7 @@ def export_composite_betas(atlas_data, bm_ax):
     """Export threat/deprivation/unpredictability β as multi-map dscalar files."""
     log('\n[2] Composite beta maps...')
 
-    bsi_path = TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
+    bsi_path = cfg.TAB_DIR / 'phase3_composites_brain_surface_inputs.csv'
     if not bsi_path.exists():
         log(f'  WARNING: {bsi_path} not found — skipping beta export')
         return
@@ -188,7 +188,7 @@ def export_individual_betas(atlas_data, bm_ax):
 
     timepoints = ['baseline', 'year2', 'year4', 'year6']
     for tp in timepoints:
-        res_path = TAB_DIR / f'phase3_individual_results_{tp}.csv'
+        res_path = cfg.TAB_DIR / f'phase3_individual_results_{tp}.csv'
         if not res_path.exists():
             continue
         res = pd.read_csv(res_path)
@@ -236,8 +236,8 @@ def export_phase2_r_matrices(atlas_data, bm_ax):
     composites = ['threat', 'deprivation', 'unpredictability']
 
     for tp in timepoints:
-        r_path = TAB_DIR / f'phase2_composites_r_matrix_{tp}.csv'
-        q_path = TAB_DIR / f'phase2_composites_q_matrix_{tp}.csv'
+        r_path = cfg.TAB_DIR / f'phase2_composites_r_matrix_{tp}.csv'
+        q_path = cfg.TAB_DIR / f'phase2_composites_q_matrix_{tp}.csv'
         if not r_path.exists():
             continue
 

@@ -28,17 +28,17 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.multitest import multipletests
 
-from adtopo.config import DAT_DIR, TAB_DIR, NETWORKS
+from adtopo.config import cfg
 from adtopo.re_models import fit_ols_cluster_table
 from adtopo.logging_utils import get_logger
 _log = get_logger('fc_analysis')
 
-CHUNK_DIR = DAT_DIR / 'fc_chunks'
-FC_PATH   = DAT_DIR / 'fc_ses-00A.csv'
-OUT_DIR   = TAB_DIR                       # repo outputs/tables (was code/outputs/tables)
+CHUNK_DIR = cfg.DAT_DIR / 'fc_chunks'
+FC_PATH   = cfg.DAT_DIR / 'fc_ses-00A.csv'
+OUT_DIR   = cfg.TAB_DIR                       # repo outputs/tables (was code/outputs/tables)
 OUT_PATH  = OUT_DIR / 'fc_lme_threat_baseline.csv'
 
-NET_NAMES = list(NETWORKS)
+NET_NAMES = list(cfg.NETWORKS)
 N         = len(NET_NAMES)
 
 # 105 off-diagonal (between-network) pairs
@@ -70,7 +70,7 @@ def merge_chunks():
 
 def load_merged():
     df_fc   = pd.read_csv(FC_PATH)
-    df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
+    df_base = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
 
     keep_base = ['sub_ID', 'family_id', 'study_site', PRED,
                  'interview_age', 'sex_num']
@@ -154,7 +154,7 @@ def main():
     args = parser.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    Path(DAT_DIR).mkdir(parents=True, exist_ok=True)
+    Path(cfg.DAT_DIR).mkdir(parents=True, exist_ok=True)
 
     log('=' * 60)
     log('FC ANALYSIS  (threat_composite → FC, LME)')

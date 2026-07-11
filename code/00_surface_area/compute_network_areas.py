@@ -27,7 +27,7 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool
 
-from adtopo.config import REPRO_DIR, XCP_DIR, DATA_DIR
+from adtopo.config import cfg
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -61,9 +61,9 @@ NETWORKS = ['DMN', 'VIS', 'FP', 'DAN', 'VAN', 'SAL', 'CO',
 # Subcortical voxel volume: 2x2x2 mm isotropic = 8 mm^3
 VOXEL_VOLUME_MM3 = 8.0
 
-DEFAULT_REPRO_DIR = str(REPRO_DIR)
-DEFAULT_XCP_DIR   = str(XCP_DIR)
-DEFAULT_OUT_DIR   = str(DATA_DIR / 'network_areas')
+DEFAULT_REPRO_DIR = str(cfg.REPRO_DIR)
+DEFAULT_XCP_DIR   = str(cfg.XCP_DIR)
+DEFAULT_OUT_DIR   = str(cfg.DATA_DIR / 'network_areas')
 
 # ---------------------------------------------------------------------------
 # Core computation

@@ -27,48 +27,12 @@ from scipy import stats
 from statsmodels.regression.mixed_linear_model import MixedLM
 from statsmodels.stats.multitest import multipletests
 
-from adtopo.config import DAT_DIR, CBCL_MEDIATION_OUTCOMES
+from adtopo.config import cfg
 
 DERIVED = Path(__file__).parent / 'derived'
 
-print('=' * 68)
-print('Within-person analyses — SCAN × ELA × CBCL')
-print('=' * 68)
-
-# All 14 CBCL subscales (identity mapping: keep the raw cbcl_scr_*_r column names as
-# the working keys). Previously restricted to the 3 subscales that were significant in
-# the cross-sectional mediation; with no significant cross-sectional effects there is no
-# basis for that filter, so we test all 14 with FDR across the full family.
-CBCL  = {src: src for src in CBCL_MEDIATION_OUTCOMES}   # source col -> working key (identity)
-LABEL = dict(CBCL_MEDIATION_OUTCOMES)                   # source col -> display label
-
-# ── Load long SCAN/topography + ELA ───────────────────────────────────────────
-d   = pd.read_csv(DERIVED / 'scan_topo_long.csv')
-ela = pd.read_csv(DERIVED / 'ela_scores.csv')
-d = d[d['usable'].isin([True, 'True', 'TRUE'])].copy()
-d = d.merge(ela, on='src_subject_id', how='left')
-d['subject'] = d['src_subject_id'].astype(str)
+# z-score helper (used across builders / results)
 z = lambda s: (s - s.mean()) / s.std()
-d['ela'] = z(d['ela_threat'])
-
-# ── Build long CBCL from the four wave dataframes, merge on (subject, wave) ────
-wave_files = {'00A': 'df_base.csv', '02A': 'df_y2.csv',
-              '04A': 'df_y4.csv',  '06A': 'df_y6.csv'}
-frames = []
-for w, f in wave_files.items():
-    dd = pd.read_csv(DAT_DIR / f)
-    keep = ['sub_ID'] + [c for c in CBCL if c in dd.columns]
-    t = dd[keep].rename(columns={'sub_ID': 'src_subject_id', **CBCL})
-    t['wave'] = w
-    frames.append(t)
-cbcl_long = pd.concat(frames, ignore_index=True)
-d = d.merge(cbcl_long, on=['src_subject_id', 'wave'], how='left')
-
-print(f'Usable rows: {len(d)},  subjects: {d["subject"].nunique()}')
-for w in ['00A', '02A', '04A', '06A']:
-    sub = d[d['wave'] == w]
-    cov = {nm: int(sub[nm].notna().sum()) for nm in LABEL}
-    print(f'  {w}: n={len(sub)}  CBCL non-missing {cov}')
 
 
 # ── Cluster-robust OLS (family), df = n_clusters - 1 ──────────────────────────
@@ -169,82 +133,125 @@ def fmt(b, p):
     return f'β={b:+.4f}  p={p:.4f} {sig}'
 
 
-lines = ['Within-person SCAN × ELA × CBCL (all 14 subscales)',
-         'ELA: 4-item threat_composite; FDR BH within 14-subscale family', '']
+def main():
+    print('=' * 68)
+    print('Within-person analyses — SCAN × ELA × CBCL')
+    print('=' * 68)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# RESULT 2 (CBCL): ΔSCAN → ΔCBCL   (does SCAN change track CBCL change?)
-# ══════════════════════════════════════════════════════════════════════════════
-print('\n' + '=' * 68)
-print('RESULT 2 (CBCL): ΔSCAN → ΔCBCL  (baseline-adjusted, FDR within 3)')
-print('=' * 68)
+    # All 14 CBCL subscales (identity mapping: keep the raw cbcl_scr_*_r column names as
+    # the working keys). Previously restricted to the 3 subscales that were significant in
+    # the cross-sectional mediation; with no significant cross-sectional effects there is no
+    # basis for that filter, so we test all 14 with FDR across the full family.
+    CBCL  = {src: src for src in cfg.CBCL_MEDIATION_OUTCOMES}   # source col -> working key (identity)
+    LABEL = dict(cfg.CBCL_MEDIATION_OUTCOMES)                   # source col -> display label
 
-xcols2 = ['d_sc_z', 'bo', 'bs', 'd_fd', 'd_years', 'base_age', 'sex']
-res2a, res2b = {}, {}
-for nm in LABEL:
-    src = [k for k, v in CBCL.items() if v == nm][0]
-    dd = d[d['scan_prop'].notna() & d[nm].notna()].copy()
+    # ── Load long SCAN/topography + ELA ───────────────────────────────────────────
+    d   = pd.read_csv(DERIVED / 'scan_topo_long.csv')
+    ela = pd.read_csv(DERIVED / 'ela_scores.csv')
+    d = d[d['usable'].isin([True, 'True', 'TRUE'])].copy()
+    d = d.merge(ela, on='src_subject_id', how='left')
+    d['subject'] = d['src_subject_id'].astype(str)
+    d['ela'] = z(d['ela_threat'])
 
-    a = build_first_last(dd, nm)
-    a = a.dropna(subset=['d_sc', 'd_out', 'base_out', 'base_sc', 'd_fd', 'd_years', 'base_age'])
-    a['d_sc_z'] = z(a['d_sc']); a['d_o'] = z(a['d_out'])
-    a['bo'] = z(a['base_out']); a['bs'] = z(a['base_sc'])
-    res2a[nm] = run_ols(a, 'd_o', xcols2, 'family', 'd_sc_z')
+    # ── Build long CBCL from the four wave dataframes, merge on (subject, wave) ────
+    wave_files = {'00A': 'df_base.csv', '02A': 'df_y2.csv',
+                  '04A': 'df_y4.csv',  '06A': 'df_y6.csv'}
+    frames = []
+    for w, f in wave_files.items():
+        dd = pd.read_csv(cfg.DAT_DIR / f)
+        keep = ['sub_ID'] + [c for c in CBCL if c in dd.columns]
+        t = dd[keep].rename(columns={'sub_ID': 'src_subject_id', **CBCL})
+        t['wave'] = w
+        frames.append(t)
+    cbcl_long = pd.concat(frames, ignore_index=True)
+    d = d.merge(cbcl_long, on=['src_subject_id', 'wave'], how='left')
 
-    aw = build_all_waves(dd, nm)
-    aw = aw.dropna(subset=['d_sc', 'd_out', 'base_out', 'base_sc', 'd_fd', 'd_years', 'base_age'])
-    aw['d_sc_z'] = z(aw['d_sc']); aw['d_o'] = z(aw['d_out'])
-    aw['bo'] = z(aw['base_out']); aw['bs'] = z(aw['base_sc'])
-    res2b[nm] = run_lme(aw, 'd_o', xcols2, 'subject', 'family', 'd_sc_z')
+    print(f'Usable rows: {len(d)},  subjects: {d["subject"].nunique()}')
+    for w in ['00A', '02A', '04A', '06A']:
+        sub = d[d['wave'] == w]
+        cov = {nm: int(sub[nm].notna().sum()) for nm in LABEL}
+        print(f'  {w}: n={len(sub)}  CBCL non-missing {cov}')
 
-q2a = multipletests([res2a[nm][2] for nm in LABEL], method='fdr_bh')[1]
-q2b = multipletests([res2b[nm][3] for nm in LABEL], method='fdr_bh')[1]
-print('  (A) First-last:')
-for i, nm in enumerate(LABEL):
-    n, b, p = res2a[nm]
-    print(f'      {LABEL[nm]:<20} N={n}  {fmt(b, p)}  q={q2a[i]:.4f}')
-    lines.append(f'  R2 first-last {LABEL[nm]}: N={n} {fmt(b,p)} q={q2a[i]:.4f}')
-print('  (B) All-waves:')
-for i, nm in enumerate(LABEL):
-    n, ns, b, p = res2b[nm]
-    print(f'      {LABEL[nm]:<20} N={n} ({ns} subj)  {fmt(b, p)}  q={q2b[i]:.4f}')
-    lines.append(f'  R2 all-waves {LABEL[nm]}: N={n} ({ns} subj) {fmt(b,p)} q={q2b[i]:.4f}')
+    lines = ['Within-person SCAN × ELA × CBCL (all 14 subscales)',
+             'ELA: 4-item threat_composite; FDR BH within 14-subscale family', '']
 
-# ══════════════════════════════════════════════════════════════════════════════
-# RESULT 3 (CBCL): ELA → ΔCBCL   (does early threat predict CBCL change?)
-# ══════════════════════════════════════════════════════════════════════════════
-print('\n' + '=' * 68)
-print('RESULT 3 (CBCL): ELA → ΔCBCL  (baseline-adjusted, FDR within 3)')
-print('=' * 68)
+    # ══════════════════════════════════════════════════════════════════════════════
+    # RESULT 2 (CBCL): ΔSCAN → ΔCBCL   (does SCAN change track CBCL change?)
+    # ══════════════════════════════════════════════════════════════════════════════
+    print('\n' + '=' * 68)
+    print('RESULT 2 (CBCL): ΔSCAN → ΔCBCL  (baseline-adjusted, FDR within 3)')
+    print('=' * 68)
 
-xcols3 = ['ela', 'bo', 'd_fd', 'd_years', 'base_age', 'sex']
-res3a, res3b = {}, {}
-for nm in LABEL:
-    dd = d[d['scan_prop'].notna() & d[nm].notna()].copy()
-    a = build_first_last(dd, nm)
-    a = a.dropna(subset=['d_out', 'base_out', 'd_fd', 'd_years', 'base_age', 'ela'])
-    a['d_o'] = z(a['d_out']); a['bo'] = z(a['base_out'])
-    res3a[nm] = run_ols(a, 'd_o', xcols3, 'family', 'ela')
+    xcols2 = ['d_sc_z', 'bo', 'bs', 'd_fd', 'd_years', 'base_age', 'sex']
+    res2a, res2b = {}, {}
+    for nm in LABEL:
+        src = [k for k, v in CBCL.items() if v == nm][0]
+        dd = d[d['scan_prop'].notna() & d[nm].notna()].copy()
 
-    aw = build_all_waves(dd, nm)
-    aw = aw.dropna(subset=['d_out', 'base_out', 'd_fd', 'd_years', 'base_age', 'ela'])
-    aw['d_o'] = z(aw['d_out']); aw['bo'] = z(aw['base_out'])
-    res3b[nm] = run_lme(aw, 'd_o', xcols3, 'subject', 'family', 'ela')
+        a = build_first_last(dd, nm)
+        a = a.dropna(subset=['d_sc', 'd_out', 'base_out', 'base_sc', 'd_fd', 'd_years', 'base_age'])
+        a['d_sc_z'] = z(a['d_sc']); a['d_o'] = z(a['d_out'])
+        a['bo'] = z(a['base_out']); a['bs'] = z(a['base_sc'])
+        res2a[nm] = run_ols(a, 'd_o', xcols2, 'family', 'd_sc_z')
 
-q3a = multipletests([res3a[nm][2] for nm in LABEL], method='fdr_bh')[1]
-q3b = multipletests([res3b[nm][3] for nm in LABEL], method='fdr_bh')[1]
-print('  (A) First-last:')
-for i, nm in enumerate(LABEL):
-    n, b, p = res3a[nm]
-    print(f'      {LABEL[nm]:<20} N={n}  {fmt(b, p)}  q={q3a[i]:.4f}')
-    lines.append(f'  R3 first-last {LABEL[nm]}: N={n} {fmt(b,p)} q={q3a[i]:.4f}')
-print('  (B) All-waves:')
-for i, nm in enumerate(LABEL):
-    n, ns, b, p = res3b[nm]
-    print(f'      {LABEL[nm]:<20} N={n} ({ns} subj)  {fmt(b, p)}  q={q3b[i]:.4f}')
-    lines.append(f'  R3 all-waves {LABEL[nm]}: N={n} ({ns} subj) {fmt(b,p)} q={q3b[i]:.4f}')
+        aw = build_all_waves(dd, nm)
+        aw = aw.dropna(subset=['d_sc', 'd_out', 'base_out', 'base_sc', 'd_fd', 'd_years', 'base_age'])
+        aw['d_sc_z'] = z(aw['d_sc']); aw['d_o'] = z(aw['d_out'])
+        aw['bo'] = z(aw['base_out']); aw['bs'] = z(aw['base_sc'])
+        res2b[nm] = run_lme(aw, 'd_o', xcols2, 'subject', 'family', 'd_sc_z')
 
-out = DERIVED / 'results_within_person_cbcl.txt'
-out.write_text('\n'.join(lines))
-print(f'\nResults written to {out}')
-print('\nDone.')
+    q2a = multipletests([res2a[nm][2] for nm in LABEL], method='fdr_bh')[1]
+    q2b = multipletests([res2b[nm][3] for nm in LABEL], method='fdr_bh')[1]
+    print('  (A) First-last:')
+    for i, nm in enumerate(LABEL):
+        n, b, p = res2a[nm]
+        print(f'      {LABEL[nm]:<20} N={n}  {fmt(b, p)}  q={q2a[i]:.4f}')
+        lines.append(f'  R2 first-last {LABEL[nm]}: N={n} {fmt(b,p)} q={q2a[i]:.4f}')
+    print('  (B) All-waves:')
+    for i, nm in enumerate(LABEL):
+        n, ns, b, p = res2b[nm]
+        print(f'      {LABEL[nm]:<20} N={n} ({ns} subj)  {fmt(b, p)}  q={q2b[i]:.4f}')
+        lines.append(f'  R2 all-waves {LABEL[nm]}: N={n} ({ns} subj) {fmt(b,p)} q={q2b[i]:.4f}')
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    # RESULT 3 (CBCL): ELA → ΔCBCL   (does early threat predict CBCL change?)
+    # ══════════════════════════════════════════════════════════════════════════════
+    print('\n' + '=' * 68)
+    print('RESULT 3 (CBCL): ELA → ΔCBCL  (baseline-adjusted, FDR within 3)')
+    print('=' * 68)
+
+    xcols3 = ['ela', 'bo', 'd_fd', 'd_years', 'base_age', 'sex']
+    res3a, res3b = {}, {}
+    for nm in LABEL:
+        dd = d[d['scan_prop'].notna() & d[nm].notna()].copy()
+        a = build_first_last(dd, nm)
+        a = a.dropna(subset=['d_out', 'base_out', 'd_fd', 'd_years', 'base_age', 'ela'])
+        a['d_o'] = z(a['d_out']); a['bo'] = z(a['base_out'])
+        res3a[nm] = run_ols(a, 'd_o', xcols3, 'family', 'ela')
+
+        aw = build_all_waves(dd, nm)
+        aw = aw.dropna(subset=['d_out', 'base_out', 'd_fd', 'd_years', 'base_age', 'ela'])
+        aw['d_o'] = z(aw['d_out']); aw['bo'] = z(aw['base_out'])
+        res3b[nm] = run_lme(aw, 'd_o', xcols3, 'subject', 'family', 'ela')
+
+    q3a = multipletests([res3a[nm][2] for nm in LABEL], method='fdr_bh')[1]
+    q3b = multipletests([res3b[nm][3] for nm in LABEL], method='fdr_bh')[1]
+    print('  (A) First-last:')
+    for i, nm in enumerate(LABEL):
+        n, b, p = res3a[nm]
+        print(f'      {LABEL[nm]:<20} N={n}  {fmt(b, p)}  q={q3a[i]:.4f}')
+        lines.append(f'  R3 first-last {LABEL[nm]}: N={n} {fmt(b,p)} q={q3a[i]:.4f}')
+    print('  (B) All-waves:')
+    for i, nm in enumerate(LABEL):
+        n, ns, b, p = res3b[nm]
+        print(f'      {LABEL[nm]:<20} N={n} ({ns} subj)  {fmt(b, p)}  q={q3b[i]:.4f}')
+        lines.append(f'  R3 all-waves {LABEL[nm]}: N={n} ({ns} subj) {fmt(b,p)} q={q3b[i]:.4f}')
+
+    out = DERIVED / 'results_within_person_cbcl.txt'
+    out.write_text('\n'.join(lines))
+    print(f'\nResults written to {out}')
+    print('\nDone.')
+
+
+if __name__ == '__main__':
+    main()

@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-from adtopo.config import TAB_DIR, DAT_DIR, NETWORKS, COMPOSITE_COLS, COMPOSITE_LABELS
+from adtopo.config import cfg
 from adtopo.bayes_factors import _bic, bf10_from_bic, label_bf
 from adtopo.logging_utils import get_logger
 _log = get_logger('bayes_factors_expansion')
@@ -41,57 +41,62 @@ def log(m=''):
     _log.info(str(m)); log_lines.append(str(m))
 
 
-df = pd.read_csv(DAT_DIR / 'df_base.csv')
-log(f'Loaded df_base N={len(df)}\n')
+def main():
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    log(f'Loaded df_base N={len(df)}\n')
 
-# ── (1) Bivariate: each composite × each network ──────────────────────────────
-log('=' * 74)
-log('(1) BIVARIATE Bayes factors — composite → prop_NET (one predictor at a time)')
-log('=' * 74)
-rows = []
-for comp in COMPOSITE_COLS:
-    for net in NETWORKS:
-        outcome = f'prop_{net}'
-        need = [outcome, comp] + COVARS + [SITE]
-        tmp = df[[c for c in need if c in df.columns]].dropna().copy()
-        tmp[SITE] = tmp[SITE].astype(str)
-        if len(tmp) < 50:
-            continue
-        bic_null = _bic(tmp, outcome, COVARS)
-        bic_full = _bic(tmp, outcome, [comp] + COVARS)
-        bf10 = bf10_from_bic(bic_null, bic_full)
-        rows.append({'predictor': comp, 'network': net, 'n': len(tmp),
+    # ── (1) Bivariate: each composite × each network ──────────────────────────────
+    log('=' * 74)
+    log('(1) BIVARIATE Bayes factors — composite → prop_NET (one predictor at a time)')
+    log('=' * 74)
+    rows = []
+    for comp in cfg.COMPOSITE_COLS:
+        for net in cfg.NETWORKS:
+            outcome = f'prop_{net}'
+            need = [outcome, comp] + COVARS + [SITE]
+            tmp = df[[c for c in need if c in df.columns]].dropna().copy()
+            tmp[SITE] = tmp[SITE].astype(str)
+            if len(tmp) < 50:
+                continue
+            bic_null = _bic(tmp, outcome, COVARS)
+            bic_full = _bic(tmp, outcome, [comp] + COVARS)
+            bf10 = bf10_from_bic(bic_null, bic_full)
+            rows.append({'predictor': comp, 'network': net, 'n': len(tmp),
+                         'BF10': bf10, 'BF01': 1.0 / bf10 if bf10 > 0 else np.inf,
+                         'log10_BF10': np.log10(bf10) if bf10 > 0 else np.nan,
+                         'evidence': label_bf(bf10)})
+    biv = pd.DataFrame(rows)
+    biv.to_csv(cfg.TAB_DIR / 'supp_bayes_factors_bivariate.csv', index=False)
+    log('\n  composite → SCAN (headline):')
+    for _, r in biv[biv.network == 'SCAN'].iterrows():
+        log(f'    {cfg.COMPOSITE_LABELS[r.predictor]:16s} BF10={r.BF10:.3g}  ({r.evidence})')
+
+    # ── (2) Multivariate joint model (SCAN): BF for each composite ────────────────
+    log('\n' + '=' * 74)
+    log('(2) MULTIVARIATE Bayes factors — 3 composites jointly → prop_SCAN')
+    log('=' * 74)
+    outcome = 'prop_SCAN'
+    need = [outcome] + cfg.COMPOSITE_COLS + COVARS + [SITE]
+    tmp = df[[c for c in need if c in df.columns]].dropna().copy()
+    tmp[SITE] = tmp[SITE].astype(str)
+    bic_full = _bic(tmp, outcome, cfg.COMPOSITE_COLS + COVARS)
+    rows = []
+    for comp in cfg.COMPOSITE_COLS:
+        others = [c for c in cfg.COMPOSITE_COLS if c != comp]
+        bic_drop = _bic(tmp, outcome, others + COVARS)     # null drops just this composite
+        bf10 = bf10_from_bic(bic_drop, bic_full)
+        rows.append({'predictor': comp, 'network': 'SCAN', 'n': len(tmp),
                      'BF10': bf10, 'BF01': 1.0 / bf10 if bf10 > 0 else np.inf,
                      'log10_BF10': np.log10(bf10) if bf10 > 0 else np.nan,
                      'evidence': label_bf(bf10)})
-biv = pd.DataFrame(rows)
-biv.to_csv(TAB_DIR / 'supp_bayes_factors_bivariate.csv', index=False)
-log('\n  composite → SCAN (headline):')
-for _, r in biv[biv.network == 'SCAN'].iterrows():
-    log(f'    {COMPOSITE_LABELS[r.predictor]:16s} BF10={r.BF10:.3g}  ({r.evidence})')
+        log(f'  {cfg.COMPOSITE_LABELS[comp]:16s} BF10={bf10:.3g}  BF01={1/bf10:.3g}  ({label_bf(bf10)})')
+    mv = pd.DataFrame(rows)
+    mv.to_csv(cfg.TAB_DIR / 'supp_bayes_factors_multivariate_SCAN.csv', index=False)
 
-# ── (2) Multivariate joint model (SCAN): BF for each composite ────────────────
-log('\n' + '=' * 74)
-log('(2) MULTIVARIATE Bayes factors — 3 composites jointly → prop_SCAN')
-log('=' * 74)
-outcome = 'prop_SCAN'
-need = [outcome] + COMPOSITE_COLS + COVARS + [SITE]
-tmp = df[[c for c in need if c in df.columns]].dropna().copy()
-tmp[SITE] = tmp[SITE].astype(str)
-bic_full = _bic(tmp, outcome, COMPOSITE_COLS + COVARS)
-rows = []
-for comp in COMPOSITE_COLS:
-    others = [c for c in COMPOSITE_COLS if c != comp]
-    bic_drop = _bic(tmp, outcome, others + COVARS)     # null drops just this composite
-    bf10 = bf10_from_bic(bic_drop, bic_full)
-    rows.append({'predictor': comp, 'network': 'SCAN', 'n': len(tmp),
-                 'BF10': bf10, 'BF01': 1.0 / bf10 if bf10 > 0 else np.inf,
-                 'log10_BF10': np.log10(bf10) if bf10 > 0 else np.nan,
-                 'evidence': label_bf(bf10)})
-    log(f'  {COMPOSITE_LABELS[comp]:16s} BF10={bf10:.3g}  BF01={1/bf10:.3g}  ({label_bf(bf10)})')
-mv = pd.DataFrame(rows)
-mv.to_csv(TAB_DIR / 'supp_bayes_factors_multivariate_SCAN.csv', index=False)
+    with open(cfg.DAT_DIR / 'supp_bayes_factors.txt', 'w') as f:
+        f.write('\n'.join(log_lines))
+    log('\nSaved: supp_bayes_factors_bivariate.csv, supp_bayes_factors_multivariate_SCAN.csv')
 
-with open(DAT_DIR / 'supp_bayes_factors.txt', 'w') as f:
-    f.write('\n'.join(log_lines))
-log('\nSaved: supp_bayes_factors_bivariate.csv, supp_bayes_factors_multivariate_SCAN.csv')
+
+if __name__ == '__main__':
+    main()

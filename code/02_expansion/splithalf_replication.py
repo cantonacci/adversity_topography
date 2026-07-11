@@ -82,87 +82,92 @@ def threat_beta_profile(df):
     return betas
 
 
-df = pd.read_csv(DFB)
-fams = df[FAM].dropna().unique()
-print(f'N subjects = {len(df)}, N families = {len(fams)}')
+def main():
+    df = pd.read_csv(DFB)
+    fams = df[FAM].dropna().unique()
+    print(f'N subjects = {len(df)}, N families = {len(fams)}')
 
-rows = []
-prof_corr_b, prof_corr_d = [], []
-profile_rows = []          # per-network disc/rep ΔR² for every split (for Fig 1d)
-scan_top_both = 0
-scan_sig_both = 0
+    rows = []
+    prof_corr_b, prof_corr_d = [], []
+    profile_rows = []          # per-network disc/rep ΔR² for every split (for Fig 1d)
+    scan_top_both = 0
+    scan_sig_both = 0
 
-for s in range(N_SPLITS):
-    rng = np.random.default_rng(SEED0 + s)
-    perm = rng.permutation(fams)
-    half1 = set(perm[:len(fams)//2])
-    d1 = df[df[FAM].isin(half1)]
-    d2 = df[~df[FAM].isin(half1)]
+    for s in range(N_SPLITS):
+        rng = np.random.default_rng(SEED0 + s)
+        perm = rng.permutation(fams)
+        half1 = set(perm[:len(fams)//2])
+        d1 = df[df[FAM].isin(half1)]
+        d2 = df[~df[FAM].isin(half1)]
 
-    res = {'split': s}
-    dr = {}
-    for tag, d in [('disc', d1), ('rep', d2)]:
-        dr[tag] = {net: delta_r2(d, net) for net in NETWORKS}
-        b, p, meth, n = fit_scan_threat(d)
-        # SCAN rank by delta-R2 (1 = largest)
-        ser = pd.Series(dr[tag]).dropna().sort_values(ascending=False)
-        rank = list(ser.index).index('SCAN') + 1
-        res[f'{tag}_scan_dr2']  = dr[tag]['SCAN']
-        res[f'{tag}_scan_rank'] = rank
-        res[f'{tag}_scan_beta'] = b
-        res[f'{tag}_scan_p']    = p
-        res[f'{tag}_n']         = n
-    # profile correlations across halves
-    bp1, bp2 = threat_beta_profile(d1), threat_beta_profile(d2)
-    vb1 = np.array([bp1[n] for n in NETWORKS]); vb2 = np.array([bp2[n] for n in NETWORKS])
-    vd1 = np.array([dr['disc'][n] for n in NETWORKS]); vd2 = np.array([dr['rep'][n] for n in NETWORKS])
-    res['beta_profile_r'] = stats.pearsonr(vb1, vb2)[0]
-    res['dr2_profile_r']  = stats.pearsonr(vd1, vd2)[0]
-    prof_corr_b.append(res['beta_profile_r']); prof_corr_d.append(res['dr2_profile_r'])
-    for net in NETWORKS:
-        profile_rows.append({'split': s, 'network': net,
-                             'disc_dr2': dr['disc'][net], 'rep_dr2': dr['rep'][net],
-                             'dr2_profile_r': res['dr2_profile_r']})
-    if res['disc_scan_rank'] == 1 and res['rep_scan_rank'] == 1:
-        scan_top_both += 1
-    if res['disc_scan_p'] < 0.05 and res['rep_scan_p'] < 0.05:
-        scan_sig_both += 1
-    rows.append(res)
-    print(f"split {s}: SCAN rank disc={res['disc_scan_rank']} rep={res['rep_scan_rank']}; "
-          f"beta disc={res['disc_scan_beta']:.5f}(p={res['disc_scan_p']:.1e}) "
-          f"rep={res['rep_scan_beta']:.5f}(p={res['rep_scan_p']:.1e}); "
-          f"profile r(beta)={res['beta_profile_r']:.2f}")
+        res = {'split': s}
+        dr = {}
+        for tag, d in [('disc', d1), ('rep', d2)]:
+            dr[tag] = {net: delta_r2(d, net) for net in NETWORKS}
+            b, p, meth, n = fit_scan_threat(d)
+            # SCAN rank by delta-R2 (1 = largest)
+            ser = pd.Series(dr[tag]).dropna().sort_values(ascending=False)
+            rank = list(ser.index).index('SCAN') + 1
+            res[f'{tag}_scan_dr2']  = dr[tag]['SCAN']
+            res[f'{tag}_scan_rank'] = rank
+            res[f'{tag}_scan_beta'] = b
+            res[f'{tag}_scan_p']    = p
+            res[f'{tag}_n']         = n
+        # profile correlations across halves
+        bp1, bp2 = threat_beta_profile(d1), threat_beta_profile(d2)
+        vb1 = np.array([bp1[n] for n in NETWORKS]); vb2 = np.array([bp2[n] for n in NETWORKS])
+        vd1 = np.array([dr['disc'][n] for n in NETWORKS]); vd2 = np.array([dr['rep'][n] for n in NETWORKS])
+        res['beta_profile_r'] = stats.pearsonr(vb1, vb2)[0]
+        res['dr2_profile_r']  = stats.pearsonr(vd1, vd2)[0]
+        prof_corr_b.append(res['beta_profile_r']); prof_corr_d.append(res['dr2_profile_r'])
+        for net in NETWORKS:
+            profile_rows.append({'split': s, 'network': net,
+                                 'disc_dr2': dr['disc'][net], 'rep_dr2': dr['rep'][net],
+                                 'dr2_profile_r': res['dr2_profile_r']})
+        if res['disc_scan_rank'] == 1 and res['rep_scan_rank'] == 1:
+            scan_top_both += 1
+        if res['disc_scan_p'] < 0.05 and res['rep_scan_p'] < 0.05:
+            scan_sig_both += 1
+        rows.append(res)
+        print(f"split {s}: SCAN rank disc={res['disc_scan_rank']} rep={res['rep_scan_rank']}; "
+              f"beta disc={res['disc_scan_beta']:.5f}(p={res['disc_scan_p']:.1e}) "
+              f"rep={res['rep_scan_beta']:.5f}(p={res['rep_scan_p']:.1e}); "
+              f"profile r(beta)={res['beta_profile_r']:.2f}")
 
-tab = pd.DataFrame(rows)
-tab.to_csv(OUT_CSV, index=False)
+    tab = pd.DataFrame(rows)
+    tab.to_csv(OUT_CSV, index=False)
 
-# Per-network disc/rep ΔR² profiles: all splits + a representative split for Fig 1d.
-prof = pd.DataFrame(profile_rows)
-prof.to_csv(ROOT / 'outputs/tables/A_splithalf_profiles_allsplits.csv', index=False)
-mean_r  = tab['dr2_profile_r'].mean()
-rep_split = int((tab['dr2_profile_r'] - mean_r).abs().idxmin())   # split closest to mean r
-prof[prof['split'] == rep_split].to_csv(
-    ROOT / 'outputs/tables/A_splithalf_profile_repsplit.csv', index=False)
-print(f'Representative split for Fig 1d = {rep_split} '
-      f'(dr2_profile_r={tab.loc[rep_split, "dr2_profile_r"]:.3f}, mean={mean_r:.3f})')
+    # Per-network disc/rep ΔR² profiles: all splits + a representative split for Fig 1d.
+    prof = pd.DataFrame(profile_rows)
+    prof.to_csv(ROOT / 'outputs/tables/A_splithalf_profiles_allsplits.csv', index=False)
+    mean_r  = tab['dr2_profile_r'].mean()
+    rep_split = int((tab['dr2_profile_r'] - mean_r).abs().idxmin())   # split closest to mean r
+    prof[prof['split'] == rep_split].to_csv(
+        ROOT / 'outputs/tables/A_splithalf_profile_repsplit.csv', index=False)
+    print(f'Representative split for Fig 1d = {rep_split} '
+          f'(dr2_profile_r={tab.loc[rep_split, "dr2_profile_r"]:.3f}, mean={mean_r:.3f})')
 
-L = []
-L.append('Analysis A — discovery/replication split-half (baseline, family-respecting)')
-L.append(f'N subjects = {len(df)}, N families = {len(fams)}, splits = {N_SPLITS}')
-L.append('')
-L.append(f'SCAN is the #1 delta-R2 network in BOTH halves: {scan_top_both}/{N_SPLITS} splits')
-L.append(f'threat->SCAN beta significant (p<.05) in BOTH halves: {scan_sig_both}/{N_SPLITS} splits')
-L.append('')
-L.append(f'SCAN delta-R2  : disc {tab.disc_scan_dr2.mean():.4f} +/- {tab.disc_scan_dr2.std():.4f} | '
-         f'rep {tab.rep_scan_dr2.mean():.4f} +/- {tab.rep_scan_dr2.std():.4f}')
-L.append(f'threat->SCAN b : disc {tab.disc_scan_beta.mean():.5f} | rep {tab.rep_scan_beta.mean():.5f}')
-L.append(f'  disc p range : {tab.disc_scan_p.min():.1e} .. {tab.disc_scan_p.max():.1e}')
-L.append(f'  rep  p range : {tab.rep_scan_p.min():.1e} .. {tab.rep_scan_p.max():.1e}')
-L.append('')
-L.append(f'Cross-half threat-beta PROFILE correlation (15 nets): '
-         f'mean r = {np.mean(prof_corr_b):.3f} (range {np.min(prof_corr_b):.3f}..{np.max(prof_corr_b):.3f})')
-L.append(f'Cross-half delta-R2 PROFILE correlation (15 nets): '
-         f'mean r = {np.mean(prof_corr_d):.3f} (range {np.min(prof_corr_d):.3f}..{np.max(prof_corr_d):.3f})')
-txt = '\n'.join(L)
-OUT_TXT.write_text(txt)
-print('\n' + txt)
+    L = []
+    L.append('Analysis A — discovery/replication split-half (baseline, family-respecting)')
+    L.append(f'N subjects = {len(df)}, N families = {len(fams)}, splits = {N_SPLITS}')
+    L.append('')
+    L.append(f'SCAN is the #1 delta-R2 network in BOTH halves: {scan_top_both}/{N_SPLITS} splits')
+    L.append(f'threat->SCAN beta significant (p<.05) in BOTH halves: {scan_sig_both}/{N_SPLITS} splits')
+    L.append('')
+    L.append(f'SCAN delta-R2  : disc {tab.disc_scan_dr2.mean():.4f} +/- {tab.disc_scan_dr2.std():.4f} | '
+             f'rep {tab.rep_scan_dr2.mean():.4f} +/- {tab.rep_scan_dr2.std():.4f}')
+    L.append(f'threat->SCAN b : disc {tab.disc_scan_beta.mean():.5f} | rep {tab.rep_scan_beta.mean():.5f}')
+    L.append(f'  disc p range : {tab.disc_scan_p.min():.1e} .. {tab.disc_scan_p.max():.1e}')
+    L.append(f'  rep  p range : {tab.rep_scan_p.min():.1e} .. {tab.rep_scan_p.max():.1e}')
+    L.append('')
+    L.append(f'Cross-half threat-beta PROFILE correlation (15 nets): '
+             f'mean r = {np.mean(prof_corr_b):.3f} (range {np.min(prof_corr_b):.3f}..{np.max(prof_corr_b):.3f})')
+    L.append(f'Cross-half delta-R2 PROFILE correlation (15 nets): '
+             f'mean r = {np.mean(prof_corr_d):.3f} (range {np.min(prof_corr_d):.3f}..{np.max(prof_corr_d):.3f})')
+    txt = '\n'.join(L)
+    OUT_TXT.write_text(txt)
+    print('\n' + txt)
+
+
+if __name__ == '__main__':
+    main()

@@ -37,7 +37,7 @@ import nibabel as nib
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
-from adtopo.config import ATLAS_DIR, DAT_DIR, NETWORKS, REPRO_DIR
+from adtopo.config import cfg
 from adtopo.logging_utils import get_logger
 _log = get_logger('encroachment_cifti')
 
@@ -46,7 +46,7 @@ N_CORT      = 59412
 N_FULL      = 91282
 N_JOBS      = min(16, cpu_count())
 
-ATLAS_PATH  = ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
+ATLAS_PATH  = cfg.ATLAS_DIR / 'abcd_template_matching_v2_combined_clusters_thresh0.50.dlabel.nii'
 ENC_DIR     = Path(__file__).parent.parent / 'outputs' / 'encroachment'
 OUT_DIR     = Path(__file__).parent.parent / 'outputs' / 'cifti_for_workbench'
 
@@ -61,7 +61,7 @@ NET_MAP = {
     'SAL': 8, 'CO':  9, 'SMD': 10, 'SML': 11, 'AUD': 12,
     'Tpole': 13, 'MTL': 14, 'PMN': 15, 'PON': 16, 'SCAN': 18,
 }
-TARGET_NETS = [n for n in NETWORKS if n != 'SCAN']
+TARGET_NETS = [n for n in cfg.NETWORKS if n != 'SCAN']
 
 # Network colors (RGB 0-255) for the dlabel color table
 NET_COLORS_RGB = {
@@ -90,7 +90,7 @@ def _init_worker(template_cort):
 
 
 def find_boldmap(sub_id, session='00A'):
-    hits = glob.glob(str(REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
+    hits = glob.glob(str(cfg.REPRO_DIR / sub_id / f'ses-{session}' / 'func' / BOLDMAP_GLOB))
     return hits[0] if hits else None
 
 
@@ -251,7 +251,7 @@ def main():
             cort_mask[slc] = True
 
     # Load baseline df
-    df = pd.read_csv(DAT_DIR / 'df_base.csv')
+    df = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
     log(f'\nBaseline N={len(df)}')
 
     for split in ('1sd', 'p10p90'):

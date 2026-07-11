@@ -71,74 +71,79 @@ def dlabel_scan_mask(path, nvert=NVERT):
                            full['CIFTI_STRUCTURE_CORTEX_RIGHT']]), scan_keys
 
 
-log('Analysis D — SCAN adversity-expansion on the principal cortical gradient')
-log('')
+def main():
+    log('Analysis D — SCAN adversity-expansion on the principal cortical gradient')
+    log('')
 
-# principal gradient (G1) -----------------------------------------------------
-grad = fetch_annotation(source='margulies2016', desc='fcgradient01', space='fsLR', den='32k')
-gL, gR = (grad if isinstance(grad, (list, tuple)) else (grad,))[:2] if isinstance(grad, (list, tuple)) else (grad[0], grad[1])
-g_full = np.concatenate([nib.load(str(gL)).darrays[0].data,
-                         nib.load(str(gR)).darrays[0].data]).astype(float)
+    # principal gradient (G1) -----------------------------------------------------
+    grad = fetch_annotation(source='margulies2016', desc='fcgradient01', space='fsLR', den='32k')
+    gL, gR = (grad if isinstance(grad, (list, tuple)) else (grad,))[:2] if isinstance(grad, (list, tuple)) else (grad[0], grad[1])
+    g_full = np.concatenate([nib.load(str(gL)).darrays[0].data,
+                             nib.load(str(gR)).darrays[0].data]).astype(float)
 
-# adversity-driven SCAN probability change -----------------------------------
-d_full = cifti_to_full(nib.load(str(DIFF)))
+    # adversity-driven SCAN probability change -----------------------------------
+    d_full = cifti_to_full(nib.load(str(DIFF)))
 
-# medial wall: vertices absent from the dscalar are NaN -> drives the valid mask.
-# also treat exact-zero gradient (fsLR medial wall convention) as missing.
-g_full[g_full == 0] = np.nan
-valid = np.isfinite(g_full) & np.isfinite(d_full)
-log(f'valid cortical vertices: {valid.sum()} of {len(valid)}')
-log(f'diff map sign check: mean(high-low) over SCAN-gaining vertices should be >0; '
-    f'overall mean diff = {np.nanmean(d_full):+.5f}, max = {np.nanmax(d_full):+.4f}')
-log('')
+    # medial wall: vertices absent from the dscalar are NaN -> drives the valid mask.
+    # also treat exact-zero gradient (fsLR medial wall convention) as missing.
+    g_full[g_full == 0] = np.nan
+    valid = np.isfinite(g_full) & np.isfinite(d_full)
+    log(f'valid cortical vertices: {valid.sum()} of {len(valid)}')
+    log(f'diff map sign check: mean(high-low) over SCAN-gaining vertices should be >0; '
+        f'overall mean diff = {np.nanmean(d_full):+.5f}, max = {np.nanmax(d_full):+.4f}')
+    log('')
 
-gv, dv = g_full[valid], d_full[valid]
-r_p, _ = stats.pearsonr(gv, dv)
-r_s, _ = stats.spearmanr(gv, dv)
-log(f'Correlation of principal gradient (G1) with adversity-driven SCAN change:')
-log(f'  Pearson  r = {r_p:+.3f}')
-log(f'  Spearman r = {r_s:+.3f}')
-log('  (G1 low = unimodal/sensorimotor, high = transmodal/association;')
-log('   NEGATIVE r => SCAN expands toward the sensorimotor end under threat.)')
-log('')
+    gv, dv = g_full[valid], d_full[valid]
+    r_p, _ = stats.pearsonr(gv, dv)
+    r_s, _ = stats.spearmanr(gv, dv)
+    log(f'Correlation of principal gradient (G1) with adversity-driven SCAN change:')
+    log(f'  Pearson  r = {r_p:+.3f}')
+    log(f'  Spearman r = {r_s:+.3f}')
+    log('  (G1 low = unimodal/sensorimotor, high = transmodal/association;')
+    log('   NEGATIVE r => SCAN expands toward the sensorimotor end under threat.)')
+    log('')
 
-# spin-test inference (Alexander-Bloch) --------------------------------------
-log('Spin-test inference (Alexander-Bloch spatial null, 1000 rotations)...')
-nulls = alexander_bloch(g_full, atlas='fsLR', density='32k', n_perm=1000, seed=1234)
-r_spin, p_spin = compare_images(g_full, d_full, nulls=nulls, metric='pearsonr')
-log(f'  whole-map gradient x expansion correlation: spin-tested r = {r_spin:+.3f}, p_spin = {p_spin:.4g}')
-log('')
+    # spin-test inference (Alexander-Bloch) --------------------------------------
+    log('Spin-test inference (Alexander-Bloch spatial null, 1000 rotations)...')
+    nulls = alexander_bloch(g_full, atlas='fsLR', density='32k', n_perm=1000, seed=1234)
+    r_spin, p_spin = compare_images(g_full, d_full, nulls=nulls, metric='pearsonr')
+    log(f'  whole-map gradient x expansion correlation: spin-tested r = {r_spin:+.3f}, p_spin = {p_spin:.4g}')
+    log('')
 
-# descriptive: where does the expansion sit on the gradient? ------------------
-g_pct = stats.rankdata(gv) / len(gv) * 100  # gradient percentile among valid vertices
-thr_hi = np.nanpercentile(dv, 90)
-hot = dv >= thr_hi   # top-decile adversity-driven SCAN gain ("encroachment hotspot")
-log('Gradient position (percentile of G1, 0=sensorimotor pole, 100=association pole):')
-log(f'  whole cortex                         : {np.mean(g_pct):.1f}')
-log(f'  adversity SCAN-gain hotspot (top 10%): {np.mean(g_pct[hot]):.1f}')
+    # descriptive: where does the expansion sit on the gradient? ------------------
+    g_pct = stats.rankdata(gv) / len(gv) * 100  # gradient percentile among valid vertices
+    thr_hi = np.nanpercentile(dv, 90)
+    hot = dv >= thr_hi   # top-decile adversity-driven SCAN gain ("encroachment hotspot")
+    log('Gradient position (percentile of G1, 0=sensorimotor pole, 100=association pole):')
+    log(f'  whole cortex                         : {np.mean(g_pct):.1f}')
+    log(f'  adversity SCAN-gain hotspot (top 10%): {np.mean(g_pct[hot]):.1f}')
 
-# spin test for the hotspot localization (reuse rotations) --------------------
-# Is the hotspot's mean gradient lower than expected under the spatial null?
-valid_idx = np.where(valid)[0]
-hot_full  = valid_idx[hot]
-gz = (g_full - np.nanmean(g_full)) / np.nanstd(g_full)
-obs_hot = np.nanmean(gz[hot_full])
-nulls_z = (nulls - np.nanmean(g_full)) / np.nanstd(g_full)
-null_hot = np.nanmean(nulls_z[hot_full, :], axis=0)
-p_hot = (np.sum(null_hot <= obs_hot) + 1) / (nulls.shape[1] + 1)
-log(f'  hotspot localization spin test: observed mean G1(z) at hotspot = {obs_hot:+.3f}, '
-    f'null mean = {np.mean(null_hot):+.3f}, p_spin(lower) = {p_hot:.4g}')
-try:
-    scan_mask, scan_keys = dlabel_scan_mask(DLAB)
-    sm_valid = scan_mask[valid]
-    if sm_valid.sum() > 0:
-        log(f'  SCAN template territory               : {np.mean(g_pct[sm_valid]):.1f}  '
-            f'(n_vert={int(sm_valid.sum())}, label keys={scan_keys})')
-        log('  -> hotspot percentile < SCAN-territory percentile would mean SCAN expands')
-        log('     DOWNHILL (further toward sensorimotor) than its own normative territory.')
-except Exception as e:
-    log(f'  (SCAN template territory: could not parse dlabel: {repr(e)[:100]})')
+    # spin test for the hotspot localization (reuse rotations) --------------------
+    # Is the hotspot's mean gradient lower than expected under the spatial null?
+    valid_idx = np.where(valid)[0]
+    hot_full  = valid_idx[hot]
+    gz = (g_full - np.nanmean(g_full)) / np.nanstd(g_full)
+    obs_hot = np.nanmean(gz[hot_full])
+    nulls_z = (nulls - np.nanmean(g_full)) / np.nanstd(g_full)
+    null_hot = np.nanmean(nulls_z[hot_full, :], axis=0)
+    p_hot = (np.sum(null_hot <= obs_hot) + 1) / (nulls.shape[1] + 1)
+    log(f'  hotspot localization spin test: observed mean G1(z) at hotspot = {obs_hot:+.3f}, '
+        f'null mean = {np.mean(null_hot):+.3f}, p_spin(lower) = {p_hot:.4g}')
+    try:
+        scan_mask, scan_keys = dlabel_scan_mask(DLAB)
+        sm_valid = scan_mask[valid]
+        if sm_valid.sum() > 0:
+            log(f'  SCAN template territory               : {np.mean(g_pct[sm_valid]):.1f}  '
+                f'(n_vert={int(sm_valid.sum())}, label keys={scan_keys})')
+            log('  -> hotspot percentile < SCAN-territory percentile would mean SCAN expands')
+            log('     DOWNHILL (further toward sensorimotor) than its own normative territory.')
+    except Exception as e:
+        log(f'  (SCAN template territory: could not parse dlabel: {repr(e)[:100]})')
 
-OUT.write_text('\n'.join(L))
-log('')
-log(f'wrote {OUT}')
+    OUT.write_text('\n'.join(L))
+    log('')
+    log(f'wrote {OUT}')
+
+
+if __name__ == '__main__':
+    main()

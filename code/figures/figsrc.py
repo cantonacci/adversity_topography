@@ -21,11 +21,7 @@ matplotlib.use("Agg")
 ROOT       = Path(__file__).resolve().parents[2]
 
 import figstyle as fs   # noqa: E402  (the house style toolkit)
-from adtopo.config import (    # noqa: E402
-    NETWORKS, NET_GROUPS, NET_GROUP_MAP,
-    COMPOSITE_COLS, COMPOSITE_LABELS,
-    ELA_COLS, ELA_LABELS_SHORT,
-)
+from adtopo.config import cfg    # noqa: E402
 
 # ── paths ────────────────────────────────────────────────────────────────────
 TAB_DIR = ROOT / "outputs" / "tables"
@@ -37,7 +33,7 @@ FIG_OUT.mkdir(parents=True, exist_ok=True)
 # ── network order & colour key (consistent across ALL figures) ───────────────
 # Group order chosen so related systems sit together; SCAN sits last for emphasis.
 GROUP_ORDER = ["Transmodal", "Limbic/Salience", "Unimodal", "Other/Assoc"]
-NET_ORDER   = [n for g in GROUP_ORDER for n in NET_GROUPS[g]]   # 15, SCAN last
+NET_ORDER   = [n for g in GROUP_ORDER for n in cfg.NET_GROUPS[g]]   # 15, SCAN last
 
 # Wong colourblind-safe hues mapped onto the four functional groups (kept as a
 # fallback / optional grouping key).
@@ -79,7 +75,7 @@ PALE_NETS = {"PON"}
 
 def group_color(net: str) -> str:
     """Functional-group colour (Wong) — optional alternative to atlas colours."""
-    return GROUP_COLOR[NET_GROUP_MAP[net]]
+    return GROUP_COLOR[cfg.NET_GROUP_MAP[net]]
 
 
 def star(q: float, p: float | None = None, bonf: float | None = None) -> str:

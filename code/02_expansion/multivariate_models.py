@@ -32,17 +32,12 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from pathlib import Path
 
-from adtopo.config import (
-    FIG_DIR, TAB_DIR, DAT_DIR,
-    NETWORKS, ELA_COLS, ELA_LABELS_SHORT,
-    COMPOSITE_COLS, COMPOSITE_LABELS_SHORT,
-    N_TESTS, N_TESTS_COMPOSITES, BONFERRONI_ALPHA, RANDOM_SEED,
-)
+from adtopo.config import cfg
 from adtopo.re_models import fit_ols_cluster_table
 from adtopo.logging_utils import get_logger
 _log = get_logger('multivariate_models')
 
-np.random.seed(RANDOM_SEED)
+np.random.seed(cfg.RANDOM_SEED)
 
 plt.rcParams.update({
     'font.family': 'sans-serif',
@@ -67,23 +62,6 @@ log_lines = []
 def log(msg=''):
     _log.info(str(msg))
     log_lines.append(str(msg))
-
-# ── Load data ─────────────────────────────────────────────────────────────────
-
-df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
-df_y2   = pd.read_csv(DAT_DIR / 'df_y2.csv')
-df_y4   = pd.read_csv(DAT_DIR / 'df_y4.csv')
-df_y6   = pd.read_csv(DAT_DIR / 'df_y6.csv')
-log(f'Loaded: df_base N={len(df_base)}, df_y2 N={len(df_y2)}, '
-    f'df_y4 N={len(df_y4)}, df_y6 N={len(df_y6)}')
-
-TIMEPOINTS = [
-    ('baseline', df_base),
-    ('year2',    df_y2),
-    ('year4',    df_y4),
-    ('year6',    df_y6),
-]
-
 
 # ── Model fitting helper ──────────────────────────────────────────────────────
 
@@ -119,7 +97,7 @@ def compute_delta_r2(df, pred_cols, label):
     site_col = 'study_site' if 'study_site' in df.columns else 'study_site_baseline'
 
     rows = []
-    for net in NETWORKS:
+    for net in cfg.NETWORKS:
         prop_col = f'prop_{net}'
         if prop_col not in df.columns:
             continue
@@ -171,7 +149,7 @@ def run_primary_models(df, pred_cols, n_tests, label):
     all_rows, r2_rows = [], []
     method_used = {}
 
-    for net in NETWORKS:
+    for net in cfg.NETWORKS:
         prop_col = f'prop_{net}'
         if prop_col not in df.columns:
             continue
@@ -271,126 +249,146 @@ def beta_heatmap(results, pred_cols, pred_labels_short, networks, title, fname):
 
 # ── Run both analysis tags ────────────────────────────────────────────────────
 
-ANALYSES = [
-    {
-        'tag':          'individual',
-        'pred_cols':    ELA_COLS,
-        'labels_short': [ELA_LABELS_SHORT[e] for e in ELA_COLS],
-        'n_tests':      N_TESTS,
-    },
-    {
-        'tag':          'composites',
-        'pred_cols':    COMPOSITE_COLS,
-        'labels_short': [COMPOSITE_LABELS_SHORT[c] for c in COMPOSITE_COLS],
-        'n_tests':      N_TESTS_COMPOSITES,
-    },
-]
+def main():
+    # ── Load data ─────────────────────────────────────────────────────────────
+    df_base = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    df_y2   = pd.read_csv(cfg.DAT_DIR / 'df_y2.csv')
+    df_y4   = pd.read_csv(cfg.DAT_DIR / 'df_y4.csv')
+    df_y6   = pd.read_csv(cfg.DAT_DIR / 'df_y6.csv')
+    log(f'Loaded: df_base N={len(df_base)}, df_y2 N={len(df_y2)}, '
+        f'df_y4 N={len(df_y4)}, df_y6 N={len(df_y6)}')
 
-for analysis in ANALYSES:
-    tag          = analysis['tag']
-    pred_cols    = analysis['pred_cols']
-    labels_short = analysis['labels_short']
-    n_tests      = analysis['n_tests']
+    TIMEPOINTS = [
+        ('baseline', df_base),
+        ('year2',    df_y2),
+        ('year4',    df_y4),
+        ('year6',    df_y6),
+    ]
+
+    ANALYSES = [
+        {
+            'tag':          'individual',
+            'pred_cols':    cfg.ELA_COLS,
+            'labels_short': [cfg.ELA_LABELS_SHORT[e] for e in cfg.ELA_COLS],
+            'n_tests':      cfg.N_TESTS,
+        },
+        {
+            'tag':          'composites',
+            'pred_cols':    cfg.COMPOSITE_COLS,
+            'labels_short': [cfg.COMPOSITE_LABELS_SHORT[c] for c in cfg.COMPOSITE_COLS],
+            'n_tests':      cfg.N_TESTS_COMPOSITES,
+        },
+    ]
+
+    for analysis in ANALYSES:
+        tag          = analysis['tag']
+        pred_cols    = analysis['pred_cols']
+        labels_short = analysis['labels_short']
+        n_tests      = analysis['n_tests']
+
+        log()
+        log('=' * 70)
+        log(f'ANALYSIS: {tag.upper()}  ({len(pred_cols)} predictors x {len(cfg.NETWORKS)} networks)')
+        log('=' * 70)
+
+        all_results = []
+        all_dr2     = []
+        surface_rows = []
+
+        for tp_label, df_tp in TIMEPOINTS:
+            avail_preds = [p for p in pred_cols if p in df_tp.columns]
+            if not avail_preds:
+                log(f'  [{tp_label}] WARNING: no predictor columns found, skipping.')
+                continue
+
+            log(f'\n  --- {tp_label} ---')
+            log('  Primary models:')
+            res, _ = run_primary_models(df_tp, avail_preds, n_tests, tp_label)
+
+            log('  Delta-R²:')
+            dr2 = compute_delta_r2(df_tp, avail_preds, tp_label)
+
+            if not res.empty:
+                res.to_csv(cfg.TAB_DIR / f'phase3_{tag}_results_{tp_label}.csv', index=False)
+                all_results.append(res)
+
+                # Report significant predictors
+                sig = res[res.get('q_FDR', pd.Series(dtype=float)) < 0.05].copy()
+                log(f'\n  [{tp_label}] FDR-sig predictors: {len(sig)}')
+                if len(sig):
+                    log(sig[['network', 'predictor', 'beta', 'se', 't', 'p', 'q_FDR']].round(4).to_string(index=False))
+
+                # Beta heatmap
+                tp_title_map = {
+                    'baseline': 'Baseline (~9-10y)',
+                    'year2':    'Year-2 (~11-12y)',
+                    'year4':    'Year-4 (~13-14y)',
+                    'year6':    'Year-6 (~15-16y)',
+                }
+                beta_heatmap(
+                    res, avail_preds, labels_short, cfg.NETWORKS,
+                    title=f'ELA [{tag}] → Network Proportion: Beta ({tp_title_map[tp_label]})',
+                    fname=cfg.FIG_DIR / f'fig_phase3_{tag}_beta_heatmap_{tp_label}.png',
+                )
+
+            if not dr2.empty:
+                dr2.to_csv(cfg.TAB_DIR / f'phase3_{tag}_delta_r2_{tp_label}.csv', index=False)
+                all_dr2.append(dr2)
+
+                # Build brain surface input rows
+                for _, dr_row in dr2.iterrows():
+                    net = dr_row['network']
+                    surf_row = {
+                        'timepoint': tp_label,
+                        'network':   net,
+                        'delta_R2':  dr_row['delta_R2'],
+                    }
+                    # Add predictor betas
+                    if not res.empty:
+                        net_res = res[res['network'] == net]
+                        for pred in avail_preds:
+                            pred_row = net_res[net_res['predictor'] == pred]
+                            beta_val = float(pred_row['beta'].iloc[0]) if len(pred_row) else np.nan
+                            surf_row[f'{pred}_beta'] = beta_val
+                    surface_rows.append(surf_row)
+
+        # Save brain surface inputs
+        if surface_rows:
+            pd.DataFrame(surface_rows).to_csv(
+                cfg.TAB_DIR / f'phase3_{tag}_brain_surface_inputs.csv', index=False)
+            log(f'\n  Saved phase3_{tag}_brain_surface_inputs.csv')
+
+        # Delta-R² bar plot across timepoints
+        if all_dr2:
+            dr2_combined = pd.concat(all_dr2, ignore_index=True)
+            tp_labels_plot = dr2_combined['timepoint'].unique()
+            fig, axes = plt.subplots(1, len(tp_labels_plot),
+                                     figsize=(5 * len(tp_labels_plot), 4))
+            if len(tp_labels_plot) == 1:
+                axes = [axes]
+            for ax, tp_l in zip(axes, tp_labels_plot):
+                dr = dr2_combined[dr2_combined['timepoint'] == tp_l]
+                ax.bar(dr['network'], dr['delta_R2'] * 100, color='steelblue', edgecolor='black', lw=0.5)
+                ax.set_title(tp_l.replace('year', 'Year-'), fontsize=11)
+                ax.set_ylabel('ΔR² × 100 (%)', fontsize=9)
+                ax.tick_params(axis='x', rotation=45)
+            plt.suptitle(f'ELA [{tag}] — Unique Variance in Network Proportion', fontsize=11)
+            plt.tight_layout()
+            plt.savefig(cfg.FIG_DIR / f'fig_phase3_{tag}_delta_r2.png')
+            plt.close()
+            log(f'  Saved fig_phase3_{tag}_delta_r2.png')
+
+        log(f'\n  {tag.upper()} complete.')
 
     log()
     log('=' * 70)
-    log(f'ANALYSIS: {tag.upper()}  ({len(pred_cols)} predictors x {len(NETWORKS)} networks)')
-    log('=' * 70)
 
-    all_results = []
-    all_dr2     = []
-    surface_rows = []
+    with open(cfg.DAT_DIR / 'progress_log.txt', 'a') as f:
+        f.write('\n\nPHASE 3 COMPLETE\n')
+        f.write('\n'.join(log_lines[-60:]))
 
-    for tp_label, df_tp in TIMEPOINTS:
-        avail_preds = [p for p in pred_cols if p in df_tp.columns]
-        if not avail_preds:
-            log(f'  [{tp_label}] WARNING: no predictor columns found, skipping.')
-            continue
+    log('Phase 3 complete.')
 
-        log(f'\n  --- {tp_label} ---')
-        log('  Primary models:')
-        res, _ = run_primary_models(df_tp, avail_preds, n_tests, tp_label)
 
-        log('  Delta-R²:')
-        dr2 = compute_delta_r2(df_tp, avail_preds, tp_label)
-
-        if not res.empty:
-            res.to_csv(TAB_DIR / f'phase3_{tag}_results_{tp_label}.csv', index=False)
-            all_results.append(res)
-
-            # Report significant predictors
-            sig = res[res.get('q_FDR', pd.Series(dtype=float)) < 0.05].copy()
-            log(f'\n  [{tp_label}] FDR-sig predictors: {len(sig)}')
-            if len(sig):
-                log(sig[['network', 'predictor', 'beta', 'se', 't', 'p', 'q_FDR']].round(4).to_string(index=False))
-
-            # Beta heatmap
-            tp_title_map = {
-                'baseline': 'Baseline (~9-10y)',
-                'year2':    'Year-2 (~11-12y)',
-                'year4':    'Year-4 (~13-14y)',
-                'year6':    'Year-6 (~15-16y)',
-            }
-            beta_heatmap(
-                res, avail_preds, labels_short, NETWORKS,
-                title=f'ELA [{tag}] → Network Proportion: Beta ({tp_title_map[tp_label]})',
-                fname=FIG_DIR / f'fig_phase3_{tag}_beta_heatmap_{tp_label}.png',
-            )
-
-        if not dr2.empty:
-            dr2.to_csv(TAB_DIR / f'phase3_{tag}_delta_r2_{tp_label}.csv', index=False)
-            all_dr2.append(dr2)
-
-            # Build brain surface input rows
-            for _, dr_row in dr2.iterrows():
-                net = dr_row['network']
-                surf_row = {
-                    'timepoint': tp_label,
-                    'network':   net,
-                    'delta_R2':  dr_row['delta_R2'],
-                }
-                # Add predictor betas
-                if not res.empty:
-                    net_res = res[res['network'] == net]
-                    for pred in avail_preds:
-                        pred_row = net_res[net_res['predictor'] == pred]
-                        beta_val = float(pred_row['beta'].iloc[0]) if len(pred_row) else np.nan
-                        surf_row[f'{pred}_beta'] = beta_val
-                surface_rows.append(surf_row)
-
-    # Save brain surface inputs
-    if surface_rows:
-        pd.DataFrame(surface_rows).to_csv(
-            TAB_DIR / f'phase3_{tag}_brain_surface_inputs.csv', index=False)
-        log(f'\n  Saved phase3_{tag}_brain_surface_inputs.csv')
-
-    # Delta-R² bar plot across timepoints
-    if all_dr2:
-        dr2_combined = pd.concat(all_dr2, ignore_index=True)
-        tp_labels_plot = dr2_combined['timepoint'].unique()
-        fig, axes = plt.subplots(1, len(tp_labels_plot),
-                                 figsize=(5 * len(tp_labels_plot), 4))
-        if len(tp_labels_plot) == 1:
-            axes = [axes]
-        for ax, tp_l in zip(axes, tp_labels_plot):
-            dr = dr2_combined[dr2_combined['timepoint'] == tp_l]
-            ax.bar(dr['network'], dr['delta_R2'] * 100, color='steelblue', edgecolor='black', lw=0.5)
-            ax.set_title(tp_l.replace('year', 'Year-'), fontsize=11)
-            ax.set_ylabel('ΔR² × 100 (%)', fontsize=9)
-            ax.tick_params(axis='x', rotation=45)
-        plt.suptitle(f'ELA [{tag}] — Unique Variance in Network Proportion', fontsize=11)
-        plt.tight_layout()
-        plt.savefig(FIG_DIR / f'fig_phase3_{tag}_delta_r2.png')
-        plt.close()
-        log(f'  Saved fig_phase3_{tag}_delta_r2.png')
-
-    log(f'\n  {tag.upper()} complete.')
-
-log()
-log('=' * 70)
-
-with open(DAT_DIR / 'progress_log.txt', 'a') as f:
-    f.write('\n\nPHASE 3 COMPLETE\n')
-    f.write('\n'.join(log_lines[-60:]))
-
-log('Phase 3 complete.')
+if __name__ == '__main__':
+    main()

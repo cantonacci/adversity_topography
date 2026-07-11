@@ -39,17 +39,17 @@ from statsmodels.stats.multitest import multipletests
 import statsmodels.formula.api as smf
 from pathlib import Path
 
-from adtopo.config import DAT_DIR, TAB_DIR, FIG_DIR, OUT_DIR, TIMEPOINT_COV, NETWORKS
+from adtopo.config import cfg
 from adtopo.re_models import fit_ols_cluster_table
 from adtopo.logging_utils import get_logger
 _log = get_logger('encroachment_analysis')
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-ENC_DIR = OUT_DIR / 'encroachment'          # repo outputs/encroachment (was code/outputs/...)
-OUT_FIG = FIG_DIR / 'encroachment'
-OUT_TAB = TAB_DIR
+ENC_DIR = cfg.OUT_DIR / 'encroachment'          # repo outputs/encroachment (was code/outputs/...)
+OUT_FIG = cfg.FIG_DIR / 'encroachment'
+OUT_TAB = cfg.TAB_DIR
 
-TARGET_NETS = [n for n in NETWORKS if n != 'SCAN']
+TARGET_NETS = [n for n in cfg.NETWORKS if n != 'SCAN']
 
 ATLAS_NET_COLORS = {
     'DMN':   '#FF0000', 'VIS':   '#000099', 'FP':    '#CCCC00',
@@ -101,7 +101,7 @@ def log(msg=''):
 def load_merged(tp):
     """Load encroachment CSV merged with ELA/covariates for a timepoint."""
     enc_path = ENC_DIR / TP_FILES[tp]
-    df_path  = DAT_DIR  / DF_FILES[tp]
+    df_path  = cfg.DAT_DIR  / DF_FILES[tp]
     if not enc_path.exists():
         log(f'  WARNING: {enc_path.name} not found'); return None
     if not df_path.exists():
@@ -112,7 +112,7 @@ def load_merged(tp):
 
     # Columns needed from df
     cov_key  = TP_COV_KEY[tp]
-    cov_info = TIMEPOINT_COV[cov_key]
+    cov_info = cfg.TIMEPOINT_COV[cov_key]
     fd_col   = cov_info['fd']
     site_col = cov_info['site']
     age_col  = cov_info['age']

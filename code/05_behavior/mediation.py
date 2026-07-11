@@ -54,20 +54,12 @@ def round_or_nan(x, ndigits):
     return np.nan if x is None or np.isnan(x) else round(float(x), ndigits)
 
 
-from adtopo.config import (
-    FIG_DIR, TAB_DIR, DAT_DIR,
-    NETWORKS,
-    COMPOSITE_COLS, COMPOSITE_LABELS_SHORT,
-    ELA_COLS,
-    CBCL_MEDIATION_OUTCOMES,
-    NIH_MEDIATION_COLS, NIH_MEDIATION_LABELS,
-    RANDOM_SEED,
-)
+from adtopo.config import cfg
 from adtopo.re_models import fit_ols_cluster_table
 from adtopo.logging_utils import get_logger
 _log = get_logger('mediation')
 
-np.random.seed(RANDOM_SEED)
+np.random.seed(cfg.RANDOM_SEED)
 N_BOOTSTRAP = 5000
 N_JOBS = -1
 
@@ -94,93 +86,12 @@ def log(msg=''):
     log_lines.append(str(msg))
 
 
-# ── Load data ─────────────────────────────────────────────────────────────────
-
-log('=' * 70)
-log('PHASE 6: Mediation analysis (composites)')
-log('=' * 70)
-
-df_base = pd.read_csv(DAT_DIR / 'df_base.csv')
-df_y6   = pd.read_csv(DAT_DIR / 'df_y6.csv')  # year-6 follow-up (~ages 15-16)
-log(f'Loaded: df_base N={len(df_base)}, df_y6 N={len(df_y6)}')
-
-
-# ── Predictor list ────────────────────────────────────────────────────────────
-
-PREDICTORS  = ['threat_composite']
-PRED_LABELS = COMPOSITE_LABELS_SHORT
-
-
 # ── Column discovery helpers ──────────────────────────────────────────────────
 
 def get_fd_site(df):
     fd   = 'fd'          if 'fd'          in df.columns else 'rest_mean_FD'
     site = 'study_site'  if 'study_site'  in df.columns else 'study_site_baseline'
     return fd, site
-
-
-# ── Build merged dataset ──────────────────────────────────────────────────────
-
-log()
-log('Building merged baseline + year-6 dataset ...')
-
-fd_base, site_base = get_fd_site(df_base)
-fd_y6,   site_y6   = get_fd_site(df_y6)
-
-# CBCL outcomes from year-6 dataframe
-avail_cbcl = [c for c in CBCL_MEDIATION_OUTCOMES if c in df_y6.columns]
-missing_cbcl = [c for c in CBCL_MEDIATION_OUTCOMES if c not in df_y6.columns]
-if missing_cbcl:
-    log(f'  WARNING: CBCL columns not in df_y6: {missing_cbcl}')
-
-# NIH outcomes are already merged into df_base (nihtb_fluid_y6, nihtb_cryst_y6)
-avail_nih = [c for c in NIH_MEDIATION_COLS if c in df_base.columns]
-missing_nih = [c for c in NIH_MEDIATION_COLS if c not in df_base.columns]
-if missing_nih:
-    log(f'  WARNING: NIH columns not in df_base: {missing_nih}')
-
-# Matching baseline subscale covariate: pull every baseline CBCL subscale from
-# df_base and rename with a "_base" suffix so each year-6 outcome can be adjusted
-# for its own baseline level (autoregressive / residualized change).
-cbcl_base_avail = [c for c in CBCL_MEDIATION_OUTCOMES if c in df_base.columns]
-
-base_keep = (
-    ['sub_ID', 'family_id', 'interview_age', 'sex_num', fd_base, site_base] +
-    PREDICTORS +
-    [f'prop_{n}' for n in NETWORKS if f'prop_{n}' in df_base.columns] +
-    avail_nih +
-    cbcl_base_avail
-)
-
-y6_keep = ['sub_ID', 'interview_age', fd_y6, site_y6] + avail_cbcl
-
-df_b = df_base[[c for c in base_keep if c in df_base.columns]].copy()
-base_rename = {
-    'interview_age': 'age_base',
-    fd_base:         'fd_base',
-    site_base:       'site_base',
-}
-# baseline subscale -> "<col>_base"  (avoid clashing with the year-6 outcome col)
-for c in cbcl_base_avail:
-    base_rename[c] = c + '_base'
-df_b = df_b.rename(columns=base_rename)
-
-df_6 = df_y6[[c for c in y6_keep if c in df_y6.columns]].copy()
-df_6 = df_6.rename(columns={
-    'interview_age': 'age_y6',
-    fd_y6:           'fd_y6',
-    site_y6:         'site_y6',
-})
-
-df_med = df_b.merge(df_6, on='sub_ID', how='inner')
-log(f'  Merged N (inner join) = {len(df_med)}')
-
-# Drop rows missing all composite predictors
-df_med = df_med.dropna(subset=PREDICTORS)
-log(f'  After dropping missing composite scores: N = {len(df_med)}')
-
-outcome_cols  = avail_cbcl + avail_nih
-outcome_labels = {**CBCL_MEDIATION_OUTCOMES, **NIH_MEDIATION_LABELS}
 
 
 # ── Mediation helpers ─────────────────────────────────────────────────────────
@@ -242,6 +153,7 @@ def build_covars(pred_col, med_col_or_none, outcome_col, is_cbcl_outcome):
     CBCL outcomes include the MATCHING baseline subscale (outcome_col + '_base');
     NIH cognition outcomes do not.
     """
+    # FD intentionally omitted from paths b/c': the mediator prop_SCAN already carries the motion-related variance, so conditioning on M absorbs it; adding FD here changes the indirect effect negligibly (-0.214 -> -0.210, CI still excludes 0).
     base = [pred_col, 'age_y6', 'sex_num']
     if med_col_or_none:
         base = [pred_col, med_col_or_none] + [c for c in base if c != pred_col]
@@ -273,7 +185,7 @@ def _boot_fast(seed, fam_groups, Xa, ya, Xb, yb, med_idx):
 
 
 def run_mediation(data, pred_col, med_col, outcome_col, n_boot=N_BOOTSTRAP):
-    is_cbcl = outcome_col in CBCL_MEDIATION_OUTCOMES
+    is_cbcl = outcome_col in cfg.CBCL_MEDIATION_OUTCOMES
 
     match_base = outcome_col + '_base'
     needed = ([pred_col, med_col, outcome_col,
@@ -375,76 +287,6 @@ def run_mediation(data, pred_col, med_col, outcome_col, n_boot=N_BOOTSTRAP):
     }
 
 
-# ── Run all triads ────────────────────────────────────────────────────────────
-
-log()
-log('=' * 70)
-log(f'STEP 6.1 — Mediation: predictor → network (baseline) → outcomes (year-6)')
-log(f'Predictors: {PREDICTORS}')
-log(f'Bootstraps: {N_BOOTSTRAP}  |  Outcomes: {len(outcome_cols)}')
-log('=' * 70)
-
-triads = [
-    (pred, net, f'prop_{net}', outcome)
-    for pred    in PREDICTORS
-    for net     in NETWORKS
-    for outcome in outcome_cols
-    if f'prop_{net}' in df_med.columns
-    and pred         in df_med.columns
-    and outcome      in df_med.columns
-]
-log(f'  Total triads: {len(triads)}  |  N_JOBS={N_JOBS}')
-
-triad_results = Parallel(n_jobs=N_JOBS, backend='loky')(
-    delayed(run_mediation)(df_med, pred, med_col, outcome)
-    for pred, net, med_col, outcome in triads
-)
-
-# ── Post-process: per-network FDR ─────────────────────────────────────────────
-
-all_rows_scan = []
-all_rows_full = []
-
-for net in NETWORKS:
-    med_col = f'prop_{net}'
-    net_rows = []
-    for (pred, n, mc, outcome), result in zip(triads, triad_results):
-        if n != net or result is None:
-            continue
-        ind  = result['indirect']
-        bp   = result['boot_p']
-        clo  = result['boot_ci_lo']
-        chi  = result['boot_ci_hi']
-        log(f'  {pred} → {net} → {outcome[:28]}'
-            f'  a={result["beta_a"]:.4f}(p={result["p_a"]:.3f})'
-            f'  indirect={ind:.4f}  CI=[{clo:.4f},{chi:.4f}]  boot_p={bp:.4f}')
-        net_rows.append(result)
-
-    if net_rows:
-        df_net = pd.DataFrame(net_rows)
-        p_boot = df_net['boot_p'].values
-        valid  = ~np.isnan(p_boot)
-        q_out  = np.full(len(p_boot), np.nan)
-        if valid.sum():
-            _, q_v, _, _ = multipletests(p_boot[valid], alpha=0.05, method='fdr_bh')
-            q_out[valid] = q_v
-        df_net['q_FDR_indirect'] = q_out
-
-        n_sig = int((q_out[valid] < 0.05).sum()) if valid.sum() else 0
-        log(f'  [{net}] FDR-sig indirect effects: {n_sig}/{len(net_rows)}')
-
-        all_rows_full.extend(df_net.to_dict('records'))
-        if net == 'SCAN':
-            all_rows_scan.extend(df_net.to_dict('records'))
-
-
-# ── Save results ──────────────────────────────────────────────────────────────
-
-log()
-log('=' * 70)
-log('STEP 6.2 — Saving results')
-log('=' * 70)
-
 def _label_df(df_out):
     df_out['outcome_label']    = df_out['outcome'].map(lambda x: outcome_labels.get(x, x))
     df_out['predictor_label']  = df_out['predictor'].map(lambda x: PRED_LABELS.get(x, x))
@@ -454,110 +296,271 @@ def _label_df(df_out):
     )
     return df_out
 
-if all_rows_scan:
-    df_scan = _label_df(pd.DataFrame(all_rows_scan))
-    df_scan.to_csv(TAB_DIR / 'phase6_mediation_SCAN.csv', index=False)
-    log(f'  Saved phase6_mediation_SCAN.csv  ({len(df_scan)} rows)')
 
-if all_rows_full:
-    df_full = _label_df(pd.DataFrame(all_rows_full))
-    df_full.to_csv(TAB_DIR / 'phase6_mediation_allnetworks.csv', index=False)
-    log(f'  Saved phase6_mediation_allnetworks.csv  ({len(df_full)} rows)')
+# ── Run all triads ────────────────────────────────────────────────────────────
 
+def main():
+    global df_med, PRED_LABELS, outcome_labels
 
-# ── Print SCAN summary ────────────────────────────────────────────────────────
+    # ── Load data ─────────────────────────────────────────────────────────────────
 
-if all_rows_scan:
-    log()
     log('=' * 70)
-    log('STEP 6.3 — SCAN mediation summary')
+    log('PHASE 6: Mediation analysis (composites)')
     log('=' * 70)
-    sig_mask = df_scan['mediation_sig']
-    log(f'  Total rows: {len(df_scan)}')
-    log(f'  CI excludes zero: {sig_mask.sum()}')
-    log(f'  FDR q<0.05: {(df_scan["q_FDR_indirect"] < 0.05).sum()}')
-    if sig_mask.sum():
-        cols_show = ['predictor_label', 'outcome_label', 'beta_a', 'p_a',
-                     'beta_b', 'p_b', 'indirect', 'boot_ci_lo', 'boot_ci_hi',
-                     'boot_p', 'q_FDR_indirect', 'mediation_sig']
-        cols_show = [c for c in cols_show if c in df_scan.columns]
-        log('\n  *** Significant (CI excludes zero) ***')
-        log(df_scan.loc[sig_mask, cols_show].to_string(index=False))
+
+    df_base = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
+    df_y6   = pd.read_csv(cfg.DAT_DIR / 'df_y6.csv')  # year-6 follow-up (~ages 15-16)
+    log(f'Loaded: df_base N={len(df_base)}, df_y6 N={len(df_y6)}')
 
 
-# ── Figure: SCAN indirect-effect heatmap ─────────────────────────────────────
+    # ── Predictor list ────────────────────────────────────────────────────────────
 
-if all_rows_scan:
+    PREDICTORS  = ['threat_composite']
+    PRED_LABELS = cfg.COMPOSITE_LABELS_SHORT
+
+
+    # ── Build merged dataset ──────────────────────────────────────────────────────
+
     log()
-    log('Generating SCAN mediation heatmap ...')
-    df_s       = df_scan.copy()
-    avail_preds = [p for p in PREDICTORS if p in df_s['predictor'].unique()]
-    avail_out   = [o for o in outcome_cols if o in df_s['outcome'].unique()]
+    log('Building merged baseline + year-6 dataset ...')
 
-    ind_mat = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=float)
-    sig_mat = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=bool)
-    q_mat   = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=float)
+    fd_base, site_base = get_fd_site(df_base)
+    fd_y6,   site_y6   = get_fd_site(df_y6)
 
-    for _, row in df_s.iterrows():
-        p = row['predictor']; o = row['outcome']
-        if p in avail_preds and o in avail_out:
-            ind_mat.loc[p, o] = row['indirect']
-            sig_mat.loc[p, o] = bool(row.get('mediation_sig', False))
-            q_mat.loc[p, o]   = row.get('q_FDR_indirect', np.nan)
+    # CBCL outcomes from year-6 dataframe
+    avail_cbcl = [c for c in cfg.CBCL_MEDIATION_OUTCOMES if c in df_y6.columns]
+    missing_cbcl = [c for c in cfg.CBCL_MEDIATION_OUTCOMES if c not in df_y6.columns]
+    if missing_cbcl:
+        log(f'  WARNING: CBCL columns not in df_y6: {missing_cbcl}')
 
-    iv = ind_mat.values.astype(float)
-    qv = q_mat.values.astype(float)
+    # NIH outcomes are already merged into df_base (nihtb_fluid_y6, nihtb_cryst_y6)
+    avail_nih = [c for c in cfg.NIH_MEDIATION_COLS if c in df_base.columns]
+    missing_nih = [c for c in cfg.NIH_MEDIATION_COLS if c not in df_base.columns]
+    if missing_nih:
+        log(f'  WARNING: NIH columns not in df_base: {missing_nih}')
 
-    out_labels_list  = [outcome_labels.get(o, o) for o in avail_out]
-    pred_labels_list = [PRED_LABELS.get(p, p)    for p in avail_preds]
+    # Matching baseline subscale covariate: pull every baseline CBCL subscale from
+    # df_base and rename with a "_base" suffix so each year-6 outcome can be adjusted
+    # for its own baseline level (autoregressive / residualized change).
+    cbcl_base_avail = [c for c in cfg.CBCL_MEDIATION_OUTCOMES if c in df_base.columns]
 
-    clim  = max(0.005, np.nanmax(np.abs(iv))) if not np.all(np.isnan(iv)) else 0.005
-    n_p   = len(avail_preds)
-    n_o   = len(avail_out)
-    fig_w = n_o * 0.75 + 3
-    fig_h = n_p * 0.7  + 2
-
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
-    annot = np.full(iv.shape, '', dtype=object)
-    for i in range(iv.shape[0]):
-        for j in range(iv.shape[1]):
-            if np.isnan(qv[i, j]) or qv[i, j] >= 0.05:
-                continue
-            sig = not (np.isnan(ind_mat.values[i, j]))
-            ci_lo_val = float(df_s.loc[
-                (df_s['predictor'] == avail_preds[i]) &
-                (df_s['outcome']   == avail_out[j]), 'boot_ci_lo'
-            ].values[0]) if len(df_s.loc[
-                (df_s['predictor'] == avail_preds[i]) &
-                (df_s['outcome']   == avail_out[j])]) else np.nan
-            ci_hi_val = float(df_s.loc[
-                (df_s['predictor'] == avail_preds[i]) &
-                (df_s['outcome']   == avail_out[j]), 'boot_ci_hi'
-            ].values[0]) if len(df_s.loc[
-                (df_s['predictor'] == avail_preds[i]) &
-                (df_s['outcome']   == avail_out[j])]) else np.nan
-            if not (np.isnan(ci_lo_val) or np.isnan(ci_hi_val)):
-                if ci_lo_val * ci_hi_val > 0:
-                    annot[i, j] = f'{iv[i,j]:.3f}*'
-                else:
-                    annot[i, j] = f'{iv[i,j]:.3f}'
-
-    sns.heatmap(
-        iv, annot=annot, fmt='',
-        cmap='RdBu_r', center=0, vmin=-clim, vmax=clim,
-        xticklabels=out_labels_list, yticklabels=pred_labels_list,
-        linewidths=0.3, linecolor='#cccccc', ax=ax,
-        annot_kws={'size': 7},
-        cbar_kws={'label': 'Indirect effect (a×b)', 'shrink': 0.7},
+    base_keep = (
+        ['sub_ID', 'family_id', 'interview_age', 'sex_num', fd_base, site_base] +
+        PREDICTORS +
+        [f'prop_{n}' for n in cfg.NETWORKS if f'prop_{n}' in df_base.columns] +
+        avail_nih +
+        cbcl_base_avail
     )
-    ax.set_title('SCAN Mediation — Indirect Effects\n(* FDR q<0.05; CI excludes 0)',
-                 fontsize=11, pad=10)
-    plt.xticks(rotation=45, ha='right')
-    plt.yticks(rotation=0)
-    plt.tight_layout()
-    fig.savefig(FIG_DIR / 'fig_phase6_SCAN_mediation_heatmap.png')
-    plt.close(fig)
-    log('  Saved fig_phase6_SCAN_mediation_heatmap.png')
 
-log()
-log('Phase 6 complete.')
+    y6_keep = ['sub_ID', 'interview_age', fd_y6, site_y6] + avail_cbcl
+
+    df_b = df_base[[c for c in base_keep if c in df_base.columns]].copy()
+    base_rename = {
+        'interview_age': 'age_base',
+        fd_base:         'fd_base',
+        site_base:       'site_base',
+    }
+    # baseline subscale -> "<col>_base"  (avoid clashing with the year-6 outcome col)
+    for c in cbcl_base_avail:
+        base_rename[c] = c + '_base'
+    df_b = df_b.rename(columns=base_rename)
+
+    df_6 = df_y6[[c for c in y6_keep if c in df_y6.columns]].copy()
+    df_6 = df_6.rename(columns={
+        'interview_age': 'age_y6',
+        fd_y6:           'fd_y6',
+        site_y6:         'site_y6',
+    })
+
+    df_med = df_b.merge(df_6, on='sub_ID', how='inner')
+    log(f'  Merged N (inner join) = {len(df_med)}')
+
+    # Drop rows missing all composite predictors
+    df_med = df_med.dropna(subset=PREDICTORS)
+    log(f'  After dropping missing composite scores: N = {len(df_med)}')
+
+    outcome_cols  = avail_cbcl + avail_nih
+    outcome_labels = {**cfg.CBCL_MEDIATION_OUTCOMES, **cfg.NIH_MEDIATION_LABELS}
+
+
+    # ── Run all triads ────────────────────────────────────────────────────────────
+
+    log()
+    log('=' * 70)
+    log(f'STEP 6.1 — Mediation: predictor → network (baseline) → outcomes (year-6)')
+    log(f'Predictors: {PREDICTORS}')
+    log(f'Bootstraps: {N_BOOTSTRAP}  |  Outcomes: {len(outcome_cols)}')
+    log('=' * 70)
+
+    triads = [
+        (pred, net, f'prop_{net}', outcome)
+        for pred    in PREDICTORS
+        for net     in cfg.NETWORKS
+        for outcome in outcome_cols
+        if f'prop_{net}' in df_med.columns
+        and pred         in df_med.columns
+        and outcome      in df_med.columns
+    ]
+    log(f'  Total triads: {len(triads)}  |  N_JOBS={N_JOBS}')
+
+    triad_results = Parallel(n_jobs=N_JOBS, backend='loky')(
+        delayed(run_mediation)(df_med, pred, med_col, outcome)
+        for pred, net, med_col, outcome in triads
+    )
+
+    # ── Post-process: per-network FDR ─────────────────────────────────────────────
+
+    all_rows_scan = []
+    all_rows_full = []
+
+    for net in cfg.NETWORKS:
+        med_col = f'prop_{net}'
+        net_rows = []
+        for (pred, n, mc, outcome), result in zip(triads, triad_results):
+            if n != net or result is None:
+                continue
+            ind  = result['indirect']
+            bp   = result['boot_p']
+            clo  = result['boot_ci_lo']
+            chi  = result['boot_ci_hi']
+            log(f'  {pred} → {net} → {outcome[:28]}'
+                f'  a={result["beta_a"]:.4f}(p={result["p_a"]:.3f})'
+                f'  indirect={ind:.4f}  CI=[{clo:.4f},{chi:.4f}]  boot_p={bp:.4f}')
+            net_rows.append(result)
+
+        if net_rows:
+            df_net = pd.DataFrame(net_rows)
+            p_boot = df_net['boot_p'].values
+            valid  = ~np.isnan(p_boot)
+            q_out  = np.full(len(p_boot), np.nan)
+            if valid.sum():
+                _, q_v, _, _ = multipletests(p_boot[valid], alpha=0.05, method='fdr_bh')
+                q_out[valid] = q_v
+            df_net['q_FDR_indirect'] = q_out
+
+            n_sig = int((q_out[valid] < 0.05).sum()) if valid.sum() else 0
+            log(f'  [{net}] FDR-sig indirect effects: {n_sig}/{len(net_rows)}')
+
+            all_rows_full.extend(df_net.to_dict('records'))
+            if net == 'SCAN':
+                all_rows_scan.extend(df_net.to_dict('records'))
+
+
+    # ── Save results ──────────────────────────────────────────────────────────────
+
+    log()
+    log('=' * 70)
+    log('STEP 6.2 — Saving results')
+    log('=' * 70)
+
+    if all_rows_scan:
+        df_scan = _label_df(pd.DataFrame(all_rows_scan))
+        df_scan.to_csv(cfg.TAB_DIR / 'phase6_mediation_SCAN.csv', index=False)
+        log(f'  Saved phase6_mediation_SCAN.csv  ({len(df_scan)} rows)')
+
+    if all_rows_full:
+        df_full = _label_df(pd.DataFrame(all_rows_full))
+        df_full.to_csv(cfg.TAB_DIR / 'phase6_mediation_allnetworks.csv', index=False)
+        log(f'  Saved phase6_mediation_allnetworks.csv  ({len(df_full)} rows)')
+
+
+    # ── Print SCAN summary ────────────────────────────────────────────────────────
+
+    if all_rows_scan:
+        log()
+        log('=' * 70)
+        log('STEP 6.3 — SCAN mediation summary')
+        log('=' * 70)
+        sig_mask = df_scan['mediation_sig']
+        log(f'  Total rows: {len(df_scan)}')
+        log(f'  CI excludes zero: {sig_mask.sum()}')
+        log(f'  FDR q<0.05: {(df_scan["q_FDR_indirect"] < 0.05).sum()}')
+        if sig_mask.sum():
+            cols_show = ['predictor_label', 'outcome_label', 'beta_a', 'p_a',
+                         'beta_b', 'p_b', 'indirect', 'boot_ci_lo', 'boot_ci_hi',
+                         'boot_p', 'q_FDR_indirect', 'mediation_sig']
+            cols_show = [c for c in cols_show if c in df_scan.columns]
+            log('\n  *** Significant (CI excludes zero) ***')
+            log(df_scan.loc[sig_mask, cols_show].to_string(index=False))
+
+
+    # ── Figure: SCAN indirect-effect heatmap ─────────────────────────────────────
+
+    if all_rows_scan:
+        log()
+        log('Generating SCAN mediation heatmap ...')
+        df_s       = df_scan.copy()
+        avail_preds = [p for p in PREDICTORS if p in df_s['predictor'].unique()]
+        avail_out   = [o for o in outcome_cols if o in df_s['outcome'].unique()]
+
+        ind_mat = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=float)
+        sig_mat = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=bool)
+        q_mat   = pd.DataFrame(index=avail_preds, columns=avail_out, dtype=float)
+
+        for _, row in df_s.iterrows():
+            p = row['predictor']; o = row['outcome']
+            if p in avail_preds and o in avail_out:
+                ind_mat.loc[p, o] = row['indirect']
+                sig_mat.loc[p, o] = bool(row.get('mediation_sig', False))
+                q_mat.loc[p, o]   = row.get('q_FDR_indirect', np.nan)
+
+        iv = ind_mat.values.astype(float)
+        qv = q_mat.values.astype(float)
+
+        out_labels_list  = [outcome_labels.get(o, o) for o in avail_out]
+        pred_labels_list = [PRED_LABELS.get(p, p)    for p in avail_preds]
+
+        clim  = max(0.005, np.nanmax(np.abs(iv))) if not np.all(np.isnan(iv)) else 0.005
+        n_p   = len(avail_preds)
+        n_o   = len(avail_out)
+        fig_w = n_o * 0.75 + 3
+        fig_h = n_p * 0.7  + 2
+
+        fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+        annot = np.full(iv.shape, '', dtype=object)
+        for i in range(iv.shape[0]):
+            for j in range(iv.shape[1]):
+                if np.isnan(qv[i, j]) or qv[i, j] >= 0.05:
+                    continue
+                sig = not (np.isnan(ind_mat.values[i, j]))
+                ci_lo_val = float(df_s.loc[
+                    (df_s['predictor'] == avail_preds[i]) &
+                    (df_s['outcome']   == avail_out[j]), 'boot_ci_lo'
+                ].values[0]) if len(df_s.loc[
+                    (df_s['predictor'] == avail_preds[i]) &
+                    (df_s['outcome']   == avail_out[j])]) else np.nan
+                ci_hi_val = float(df_s.loc[
+                    (df_s['predictor'] == avail_preds[i]) &
+                    (df_s['outcome']   == avail_out[j]), 'boot_ci_hi'
+                ].values[0]) if len(df_s.loc[
+                    (df_s['predictor'] == avail_preds[i]) &
+                    (df_s['outcome']   == avail_out[j])]) else np.nan
+                if not (np.isnan(ci_lo_val) or np.isnan(ci_hi_val)):
+                    if ci_lo_val * ci_hi_val > 0:
+                        annot[i, j] = f'{iv[i,j]:.3f}*'
+                    else:
+                        annot[i, j] = f'{iv[i,j]:.3f}'
+
+        sns.heatmap(
+            iv, annot=annot, fmt='',
+            cmap='RdBu_r', center=0, vmin=-clim, vmax=clim,
+            xticklabels=out_labels_list, yticklabels=pred_labels_list,
+            linewidths=0.3, linecolor='#cccccc', ax=ax,
+            annot_kws={'size': 7},
+            cbar_kws={'label': 'Indirect effect (a×b)', 'shrink': 0.7},
+        )
+        ax.set_title('SCAN Mediation — Indirect Effects\n(* FDR q<0.05; CI excludes 0)',
+                     fontsize=11, pad=10)
+        plt.xticks(rotation=45, ha='right')
+        plt.yticks(rotation=0)
+        plt.tight_layout()
+        fig.savefig(cfg.FIG_DIR / 'fig_phase6_SCAN_mediation_heatmap.png')
+        plt.close(fig)
+        log('  Saved fig_phase6_SCAN_mediation_heatmap.png')
+
+    log()
+    log('Phase 6 complete.')
+
+
+if __name__ == '__main__':
+    main()

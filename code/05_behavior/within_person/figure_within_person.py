@@ -38,7 +38,6 @@ _FONT_PREF = ['Source Sans Pro', 'Source Sans 3', 'Liberation Sans',
               'Helvetica Neue', 'Helvetica', 'Arial', 'DejaVu Sans']
 _AVAIL = {f.name for f in _fm.fontManager.ttflist}
 _FONT  = next((f for f in _FONT_PREF if f in _AVAIL), 'DejaVu Sans')
-print(f'Font: {_FONT}')
 
 mpl.rcParams.update({
     'font.family':        'sans-serif',
@@ -112,33 +111,12 @@ def save_fig(fig, name):
     plt.close(fig)
 
 
-# ── load & prep data ──────────────────────────────────────────────────────────
-print('Loading data ...')
-long = pd.read_csv(DERIV / 'scan_topo_long.csv')
-ela  = pd.read_csv(DERIV / 'ela_scores.csv')
-
-long['usable'] = long['usable'].isin([True, 'True', 'TRUE'])
-long = long.merge(ela, on='src_subject_id', how='left')
-
-sub_ela  = long.groupby('src_subject_id')['ela_threat'].first().dropna()
-q33, q67 = sub_ela.quantile([1/3, 2/3])
-
-
+# ── tertile assignment (reads module-level q33/q67 set in main) ────────────────
 def _assign_tert(v):
     if pd.isna(v): return np.nan
     if v <= q33:   return 'Low'
     if v <= q67:   return 'Medium'
     return 'High'
-
-
-long['tert'] = long['ela_threat'].apply(_assign_tert)
-print(f'Tertile cutoffs (z-score): Low ≤ {q33:.2f} < Medium ≤ {q67:.2f} < High')
-
-for t in TERTILE_ORDER:
-    ns = [long[(long.wave == WAVE_CODES[yr]) & long.usable &
-               (long.tert == t) & long.scan_prop.notna()]
-          .src_subject_id.nunique() for yr in WAVE_YR]
-    print(f'  {t}: {ns}')
 
 
 # ── trajectory helper ─────────────────────────────────────────────────────────
@@ -348,13 +326,42 @@ def panel_c():
 
 
 # ── run ───────────────────────────────────────────────────────────────────────
-print('\n' + '='*60)
-print('Within-person publication figures  (v2)')
-print('='*60)
+def main():
+    global long, q33, q67
 
-panel_legend()
-panel_a()
-panel_b()
-panel_c()
+    print(f'Font: {_FONT}')
 
-print(f'\nAll figures saved to: {FIGOUT}')
+    # ── load & prep data ──────────────────────────────────────────────────────────
+    print('Loading data ...')
+    long = pd.read_csv(DERIV / 'scan_topo_long.csv')
+    ela  = pd.read_csv(DERIV / 'ela_scores.csv')
+
+    long['usable'] = long['usable'].isin([True, 'True', 'TRUE'])
+    long = long.merge(ela, on='src_subject_id', how='left')
+
+    sub_ela  = long.groupby('src_subject_id')['ela_threat'].first().dropna()
+    q33, q67 = sub_ela.quantile([1/3, 2/3])
+
+    long['tert'] = long['ela_threat'].apply(_assign_tert)
+    print(f'Tertile cutoffs (z-score): Low ≤ {q33:.2f} < Medium ≤ {q67:.2f} < High')
+
+    for t in TERTILE_ORDER:
+        ns = [long[(long.wave == WAVE_CODES[yr]) & long.usable &
+                   (long.tert == t) & long.scan_prop.notna()]
+              .src_subject_id.nunique() for yr in WAVE_YR]
+        print(f'  {t}: {ns}')
+
+    print('\n' + '='*60)
+    print('Within-person publication figures  (v2)')
+    print('='*60)
+
+    panel_legend()
+    panel_a()
+    panel_b()
+    panel_c()
+
+    print(f'\nAll figures saved to: {FIGOUT}')
+
+
+if __name__ == '__main__':
+    main()

@@ -25,7 +25,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np
 import pandas as pd
 
-from adtopo.config import DAT_DIR, REPRO_DIR, FC_DTSERIES_DIR
+from adtopo.config import cfg
 from adtopo.fc_utils import (
     MIN_FRAMES,
     BOLDMAP_GLOB, DTSERIES_GLOB, MOTION_GLOB,
@@ -35,13 +35,13 @@ from adtopo.fc_utils import (
 )
 
 # ── constants ──────────────────────────────────────────────────────────────────
-FC_DIR    = FC_DTSERIES_DIR
+FC_DIR    = cfg.FC_DTSERIES_DIR
 OUT_DIR   = Path(__file__).parent.parent / 'outputs' / 'data_processed' / 'fc_chunks'
 
 
 def process_subject(sub_id):
     session    = 'ses-00A'
-    func_repro = REPRO_DIR / sub_id / 'ses-00A' / 'func'
+    func_repro = cfg.REPRO_DIR / sub_id / 'ses-00A' / 'func'
     func_fc    = FC_DIR    / sub_id / 'ses-00A' / 'func'
 
     boldmap_p  = find_file(func_repro, BOLDMAP_GLOB)
@@ -112,7 +112,7 @@ def main():
     log(f'FC COMPUTATION  chunk {args.chunk_idx} of {args.n_chunks}')
     log('=' * 60)
 
-    df      = pd.read_csv(DAT_DIR / 'df_base.csv')
+    df      = pd.read_csv(cfg.DAT_DIR / 'df_base.csv')
     sub_ids = df['sub_ID'].tolist()
     chunks  = np.array_split(sub_ids, args.n_chunks)
     chunk   = list(chunks[args.chunk_idx])
