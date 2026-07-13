@@ -27,7 +27,9 @@ analysis (none / total / matching) showed the same FDR-surviving outcomes under
 all schemes; matching gives the cleanest "prospective change" interpretation.
 NIH Toolbox cognition outcomes do not receive a CBCL baseline covariate.
 
-FDR correction: BH within threat_composite across 16 outcomes.
+FDR correction: BH within outcome domain — the 2 NIH-Toolbox cognition outcomes
+and the 14 CBCL subscales are corrected separately (distinct hypothesis families),
+rather than pooling all 16 into one correction.
 
 Outputs:
   TAB_DIR/phase6_mediation_SCAN.csv         — SCAN mediator, all predictors & outcomes
@@ -433,9 +435,18 @@ def main():
             p_boot = df_net['boot_p'].values
             valid  = ~np.isnan(p_boot)
             q_out  = np.full(len(p_boot), np.nan)
-            if valid.sum():
-                _, q_v, _, _ = multipletests(p_boot[valid], alpha=0.05, method='fdr_bh')
-                q_out[valid] = q_v
+            # BH-FDR WITHIN outcome domain: cognition (2 NIH-Toolbox) and CBCL
+            # (14 subscales) are distinct hypothesis families, so correct each
+            # separately rather than pooling all 16 (which would let the null
+            # CBCL tests inflate the cognition q-values).
+            is_cbcl_row = df_net['outcome'].isin(
+                list(cfg.CBCL_MEDIATION_OUTCOMES)).values
+            for domain_mask in (is_cbcl_row, ~is_cbcl_row):
+                grp = domain_mask & valid
+                if grp.sum():
+                    _, q_v, _, _ = multipletests(
+                        p_boot[grp], alpha=0.05, method='fdr_bh')
+                    q_out[grp] = q_v
             df_net['q_FDR_indirect'] = q_out
 
             n_sig = int((q_out[valid] < 0.05).sum()) if valid.sum() else 0

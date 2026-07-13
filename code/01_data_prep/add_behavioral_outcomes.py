@@ -181,7 +181,7 @@ def main():
     log(f'  CBCL loaded: N={len(cbcl_raw)} rows (ABCD mh_p_cbcl release)')
     log(f'  CBCL sessions: {sorted(cbcl_raw["session_id"].dropna().unique().tolist())}')
 
-    # ABCD 6.0 mh_p_cbcl uses BIDS session codes (ses-0XA) and mh_p_cbcl__* summary
+    # ABCD 7.0 mh_p_cbcl uses BIDS session codes (ses-0XA) and mh_p_cbcl__* summary
     # columns. Rename the raw-sum columns to the canonical cbcl_scr_*_r names, then map
     # session_id DIRECTLY to the imaging-wave code: ses-02A/04A/06A ARE the 2/4/6-year
     # visits (verified mh_p_cbcl_age matches imaging age per wave — 9.96/12.07/14.18/

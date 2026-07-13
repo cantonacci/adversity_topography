@@ -74,6 +74,14 @@ def build_analysis_sample(df_topo, df_ela, df_cov, session, label):
     df['sex_num'] = (df['sex'] == 'M').astype(float)
     # Rename session-specific FD/site cols to generic names so downstream
     # scripts can refer to them without knowing the timepoint.
+    #
+    # NOTE on site count: study_site contains 22 distinct labels at baseline, but
+    # there are 21 actual ABCD data-collection sites (reported as such in the
+    # manuscript). The 22nd label is an administrative site assigned to a handful
+    # of participants with an irregular site situation (e.g. children who moved
+    # between sites); at baseline it holds only ~15 subjects. It is retained as its
+    # own fixed-effect level here so those participants are not misattributed to a
+    # real site — it does not represent a 21st collection site.
     df = df.rename(columns={fd_col: 'fd', site_col: 'study_site'})
     return df.reset_index(drop=True)
 

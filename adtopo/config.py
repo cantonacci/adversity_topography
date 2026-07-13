@@ -58,7 +58,7 @@ TOPO_FILES = {
 ATLAS_DIR = DATA_DIR / 'atlas_files'
 ELA_FILE  = DATA_DIR / 'ela'        / '4_ELA_final.xlsx'
 COV_FILE  = DATA_DIR / 'covariates' / '5_covariates_extended.xlsx'
-CBCL_FILE = DATA_DIR / 'cbcl'       / 'mh_p_cbcl.tsv'   # ABCD 6.0 release (through year-6)
+CBCL_FILE = DATA_DIR / 'cbcl'       / 'mh_p_cbcl.tsv'   # ABCD 7.0 release (through year-6)
 
 # Per-timepoint covariate column names.
 # age_in_months=True → divide by 12 to get years when loading.
@@ -248,7 +248,7 @@ CBCL_MEDIATION_OUTCOMES = {
     'cbcl_scr_syn_social_r':     'Social Problems',
 }
 
-# ABCD 6.0 mh_p_cbcl.tsv delivers summary scores under new names and BIDS session
+# ABCD 7.0 mh_p_cbcl.tsv delivers summary scores under new names and BIDS session
 # codes. Map the raw-sum columns to the canonical cbcl_scr_*_r names used throughout
 # the code so downstream analyses are unchanged. (Verified against mh_p_cbcl.json;
 # *_sum is the raw syndrome/DSM-scale sum, the analogue of the old *_r raw score.)
