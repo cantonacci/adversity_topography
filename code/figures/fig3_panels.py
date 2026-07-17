@@ -240,7 +240,7 @@ def panel_struct_func():
         ax.annotate(net, (row["threat_encroach_beta"], row["threat_fc_beta"]),
                     xytext=off.get(net, (3, 3)), textcoords="offset points",
                     fontsize=4.6, color="black")
-    ax.text(0.04, 0.96, f"r = {r:.2f}\nperm p = 0.029", transform=ax.transAxes,
+    ax.text(0.04, 0.96, f"r = {r:.2f}\nperm p = 0.020", transform=ax.transAxes,
             va="top", ha="left", fontsize=6)
     # call out the CO exception
     co = d[d["network"] == "CO"].iloc[0]

@@ -391,9 +391,9 @@ def panel_sizes():
     # Distribution of all 15 network cortical shares at baseline, ordered
     # largest→smallest; SCAN (one of the smallest) highlighted in the accent.
     df = pd.read_csv(F.DAT_DIR / "df_base.csv")
-    prop_cols = [f"prop_{n}" for n in F.NETWORKS]
-    data = {n: (df[f"prop_{n}"].dropna().values * 100.0) for n in F.NETWORKS}
-    order = sorted(F.NETWORKS, key=lambda n: np.median(data[n]), reverse=True)
+    prop_cols = [f"prop_{n}" for n in F.NET_ORDER]
+    data = {n: (df[f"prop_{n}"].dropna().values * 100.0) for n in F.NET_ORDER}
+    order = sorted(F.NET_ORDER, key=lambda n: np.median(data[n]), reverse=True)
     series = [data[n] for n in order]
 
     fig, ax = fs.figure("double", 62)
@@ -447,7 +447,7 @@ def panel_waves():
 
     fig, ax = fs.figure("single", 62)
     ax.axhline(0, color="black", lw=0.4, zorder=0)
-    for net in F.NETWORKS:
+    for net in F.NET_ORDER:
         if net == "SCAN":
             continue
         ax.plot(xs, M.loc[net, waves].values, color=F.GREY["muted"],

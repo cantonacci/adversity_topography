@@ -61,14 +61,27 @@ def edu_map(v):
     if v in (19,20,21): return 'Postgraduate degree'
     return np.nan
 
-def cat_compare(col,mapper=None,label=None):
+def cat_compare(col,mapper=None,label=None,test_raw=True):
+    """Included-vs-excluded comparison (Table S3).
+    When a mapper is supplied the percentage columns summarize the collapsed
+    categories (e.g. income >= $100k, education >= bachelor's), but the
+    chi-square and bias-corrected Cramer's V test the FULL raw ABCD category
+    distribution (omnibus test: income 10 levels -> df=9, education 21 levels
+    -> df=20), unless test_raw=False. Complete-case is defined by the summary
+    variable, so n and the missing set match the reported percentages.
+    """
     if col not in cov.columns: log(f"  [{col}] not in COV"); return
     s=cov[[col,'included']].dropna().copy()
-    if mapper is not None: s[col]=s[col].map(mapper); s=s.dropna()
-    ct=pd.crosstab(s[col],s['included'])
+    if mapper is not None:
+        s['_summary']=s[col].map(mapper)
+        s=s.dropna(subset=['_summary'])          # complete-case on the summary variable
+    else:
+        s['_summary']=s[col]
+    test_col = col if (mapper is not None and test_raw) else '_summary'
+    ct=pd.crosstab(s[test_col],s['included'])
     chi2,p,dof,_=stats.chi2_contingency(ct); v=cramers_v(ct)
     log(f"\n  -- {label or col} -- chi2({dof})={chi2:.2f} p={p:.3g} CramersV_bc={v:.3f}  (n={len(s)})")
-    pct=(pd.crosstab(s[col],s['included'],normalize='columns')*100).round(1)
+    pct=(pd.crosstab(s['_summary'],s['included'],normalize='columns')*100).round(1)
     pct.columns=['excluded%','included%']; log(pct.to_string())
 
 def main():
@@ -172,8 +185,8 @@ def main():
     log(f"  Full baseline cohort N={len(cov)}  included={int(cov['included'].sum())}  excluded={int((~cov['included']).sum())}")
     cat_compare('sex')
     cat_compare('Race')
-    cat_compare('Income',mapper=INC_MAP,label='Household income (collapsed)')
-    cat_compare('Parent_edu',mapper=edu_map,label='Parental education (collapsed)')
+    cat_compare('Income',mapper=INC_MAP,label='Household income (omnibus chi2 on 10 raw levels; % >= $100k)')
+    cat_compare('Parent_edu',mapper=edu_map,label='Parental education (omnibus chi2 on 21 raw levels; % >= bachelor\'s)')
 
     pd.DataFrame(rows).to_csv(OUTC,index=False)
     OUT.write_text("\n".join(L))
